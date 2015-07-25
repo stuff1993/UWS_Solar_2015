@@ -127,19 +127,44 @@ explicit EXT IDs, and group EXT IDs. */
 #define ACCF_IDEN_NUM			4
 
 /* Identifiers for FULLCAN, EXP STD, GRP STD, EXP EXT, GRP EXT */
+//#define MPPT_RPLY				0x060		// Distance to MPPT reply packet 0b000001100000
+
+#ifndef MPPT1_REPLY
 #define MPPT1_REPLY 			0x776		// DriveTek Slave Answer Frame -- 0110 0b011101110110
+#endif
+
+#ifndef MPPT2_REPLY
 #define MPPT2_REPLY 			0x779		// DriveTek Slave Answer Frame -- 1001 0b011101111001
+#endif
 
+#ifndef MPP1_BASE
 #define MPPT1_BASE				0x716		// DriveTek Master Request 0b011100010110
+#endif
+
+#ifndef MPPT2_BASE
 #define MPPT2_BASE				0x719		// DriveTek Master Request 0b011100011001
-#define MPPT_RPLY				0b000001100000		// Distance to MPPT reply packet
+#endif
 
+#ifndef DASH_RPLY
 #define DASH_RPLY				0x510		// Messages from dash
+#endif
+
+#ifndef DASH_RQST
 #define DASH_RQST				0x520		// Messages to dash
+#endif
 
+#ifndef ESC_CONTROL
+#define ESC_CONTROL				0x500		// Base for control packets for motor controller(s)
+#endif
+
+#ifndef ESC_BASE
 #define ESC_BASE				0x400		// Base address of motor controller
+#endif
 
+#ifndef BMU_BASE
 #define BMU_BASE 				0x600
+#endif
+
 #define BMU_INFO 				0xF4		// Add to base to skip CMU packets
 
 #define GRP_STD_ID				0x200

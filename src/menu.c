@@ -659,11 +659,7 @@ void lcd_display_errors (void) // menus[10]
 
 		if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
 		{
-			MsgBuf_TX1.Frame = 0x00080000; 			// 11-bit, no RTR, DLC is 8 bytes
-			MsgBuf_TX1.MsgID = 0x503; 				// Explicit Standard ID
-			MsgBuf_TX1.DataB = 0x0;
-			MsgBuf_TX1.DataA = 0x0;
-			CAN1_SendMessage( &MsgBuf_TX1 );
+			esc_reset();
 			buzzer(20);
 		}
 	}
@@ -890,11 +886,7 @@ void lcd_display_SWOC (void) // errors[0]
 	{
 		if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
 		{
-			MsgBuf_TX1.Frame = 0x00080000; 			/* 11-bit, no RTR, DLC is 8 bytes */
-			MsgBuf_TX1.MsgID = 0x503; 		/* Explicit Standard ID */
-			MsgBuf_TX1.DataB = 0x0;
-			MsgBuf_TX1.DataA = 0x0;
-			CAN1_SendMessage( &MsgBuf_TX1 );
+			esc_reset();
 			buzzer(20);
 		}
 	}
@@ -933,11 +925,7 @@ void lcd_display_HWOC (void) // errors[1]
 	{
 		if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
 		{
-			MsgBuf_TX1.Frame = 0x00080000; 			/* 11-bit, no RTR, DLC is 8 bytes */
-			MsgBuf_TX1.MsgID = 0x503; 		/* Explicit Standard ID */
-			MsgBuf_TX1.DataB = 0x0;
-			MsgBuf_TX1.DataA = 0x0;
-			CAN1_SendMessage( &MsgBuf_TX1 );
+			esc_reset();
 		}
 	}
 	else if(INCREMENT || DECREMENT){STATS.HWOC_ACK = TRUE;}// mark error acknowledged

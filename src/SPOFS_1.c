@@ -87,14 +87,14 @@ void SysTick_Handler (void)
 	if (CLOCK.T_mS % 10 == 0) // Every 100 mS send heartbeat CAN packets
 	{ // TODO: need to wait for CAN setup
 		MsgBuf_TX1.Frame = 0x00080000;
-		MsgBuf_TX1.MsgID = ESC_BASE + 1;
+		MsgBuf_TX1.MsgID = ESC_CONTROL + 1;
 		MsgBuf_TX1.DataA = conv_float_uint(DRIVE.Speed_RPM);
 		if(DRIVE.Current < 0){MsgBuf_TX1.DataB = conv_float_uint(DRIVE.Current * -1.0);}
 		else{MsgBuf_TX1.DataB = conv_float_uint(DRIVE.Current);}
 		CAN1_SendMessage( &MsgBuf_TX1 );
 
 		MsgBuf_TX1.Frame = 0x00080000;
-		MsgBuf_TX1.MsgID = ESC_BASE + 2;
+		MsgBuf_TX1.MsgID = ESC_CONTROL + 2;
 		MsgBuf_TX1.DataA = conv_float_uint(1);
 		MsgBuf_TX1.DataB = 0x0;
 		CAN1_SendMessage( &MsgBuf_TX1 );
@@ -102,7 +102,7 @@ void SysTick_Handler (void)
 		// TODO: Check if required
 		/*
 		MsgBuf_TX1.Frame = 0x00080000;
-		MsgBuf_TX1.MsgID = ESC_BASE + 5;
+		MsgBuf_TX1.MsgID = ESC_CONTROL + 5;
 		MsgBuf_TX1.DataA = STATS.IGNITION;
 		MsgBuf_TX1.DataB = 0x0;
 		CAN1_SendMessage( &MsgBuf_TX1 );
@@ -167,7 +167,7 @@ void menu_mppt_poll (void)
 	if((LPC_CAN1->GSR & (1 << 3)) && STATS.MPPT_POLL_COUNT)		// If previous transmission is complete, send message;
 	{
 		MsgBuf_TX1.Frame = 0x00070000; 							// 11-bit, no RTR, DLC is 8 bytes
-		MsgBuf_TX1.MsgID = MPPT2_BASE + MPPT_RPLY; 						// Explicit Standard ID
+		MsgBuf_TX1.MsgID = MPPT2_RPLY; 						// Explicit Standard ID
 		if (MPPT2.Connected) // Relay data
 		{
 			MsgBuf_TX1.DataA = fakeMPPT2.DataA;
@@ -183,7 +183,7 @@ void menu_mppt_poll (void)
 	else if(LPC_CAN1->GSR & (1 << 3))							// If previous transmission is complete, send message;
 	{
 		MsgBuf_TX1.Frame = 0x00070000; 							// 11-bit, no RTR, DLC is 8 bytes
-		MsgBuf_TX1.MsgID = MPPT1_BASE + MPPT_RPLY; 						// Explicit Standard ID
+		MsgBuf_TX1.MsgID = MPPT1_RPLY; 						// Explicit Standard ID
 		if (MPPT1.Connected) // Relay data
 		{
 			MsgBuf_TX1.DataA = fakeMPPT1.DataA;
@@ -505,18 +505,15 @@ void menu_can_handler (void)
 
 			if(MENU.DRIVER == 3)
 			{
-				sprintf(buffer, "-DICKDICK-");
-				_lcd_putTitle(buffer);
-				sprintf(buffer, "                    ");
-				lcd_putstring(1,0, buffer);
+				_lcd_putTitle("-DICKDICK-");
+				lcd_putstring(1,0, "                    ");
 				sprintf(buffer, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", 0x00, 0x02, 0x04, 0x04, 0x05, 0x00, 0x02, 0x04, 0x04, 0x05, 0x00, 0x02, 0x04, 0x04, 0x05, 0x00, 0x02, 0x04, 0x04, 0x05);
 				lcd_putstring(2,0, buffer);
 				sprintf(buffer, "%c%c   %c%c   %c%c   %c%c   ", 0x01, 0x03, 0x01, 0x03, 0x01, 0x03, 0x01, 0x03);
 			}
 			else
 			{
-				sprintf(buffer, "-KILLDRVE-");
-				_lcd_putTitle(buffer);
+				_lcd_putTitle("-KILLDRVE-");
 				sprintf(buffer, "--   KILL DRIVE   --");
 				lcd_putstring(1,0, buffer);
 				lcd_putstring(2,0, buffer);
@@ -534,11 +531,7 @@ void menu_can_handler (void)
 		{
 			if(ESC.ERROR == 0x2)
 			{
-				MsgBuf_TX1.Frame = 0x00080000; 		// 11-bit, no RTR, DLC is 8 bytes
-				MsgBuf_TX1.MsgID = 0x503; 			// Explicit Standard ID
-				MsgBuf_TX1.DataB = 0x0;
-				MsgBuf_TX1.DataA = 0x0;
-				CAN1_SendMessage( &MsgBuf_TX1 );
+				esc_reset();
 				buzzer(100);
 				NEUTRAL_OFF;REVERSE_OFF;DRIVE_OFF;REGEN_OFF;
 			}
@@ -590,6 +583,24 @@ void menu_calc (void)
 	if(BMU.Watts > BMU.MAX_Watts){BMU.MAX_Watts = BMU.Watts;}
 	if(BMU.Battery_I > BMU.MAX_Battery_I){BMU.MAX_Battery_I = BMU.Battery_I;}
 	if(BMU.Battery_V > BMU.MAX_Battery_V){BMU.MAX_Battery_V = BMU.Battery_V;}
+}
+
+/******************************************************************************
+** Function name:		esc_reset
+**
+** Description:			Resets motorcontrollers with CAN packet
+**
+** Parameters:			None
+** Returned value:		None
+**
+******************************************************************************/
+void esc_reset (void)
+{
+	MsgBuf_TX1.Frame = 0x00080000; 		// 11-bit, no RTR, DLC is 8 bytes
+	MsgBuf_TX1.MsgID = ESC_CONTROL + 3; 			// Explicit Standard ID
+	MsgBuf_TX1.DataB = 0x0;
+	MsgBuf_TX1.DataA = 0x0;
+	CAN1_SendMessage( &MsgBuf_TX1 );
 }
 
 /******************************************************************************
@@ -882,6 +893,12 @@ int main (void)
 
 	SystemInit();
 	SystemCoreClockUpdate();
+
+	setCANBUS1();
+	setCANBUS2();
+
+	I2C1Init();
+
 	SysTick_Config(SystemCoreClock / 100);		// 10mS Systicker.
 
 	ADCInit(ADC_CLK);
@@ -890,11 +907,6 @@ int main (void)
 
 	setLCD();
 	lcd_clear();
-
-	I2C1Init();
-
-	setCANBUS1();
-	setCANBUS2();
 
 	BOD_Init();
 
