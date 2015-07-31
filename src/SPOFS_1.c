@@ -27,7 +27,8 @@
 #include "menu.h"
 #include "can.h"
 
-// TODO: limit throttle in display mode?
+// TODO: TEAM - limit throttle in display mode?
+// TODO: MAJOR - naming consistency
 
 /////////////////////////////   CAN    ////////////////////////////////
 CAN_MSG MsgBuf_TX1, MsgBuf_TX2; /* TX and RX Buffers for CAN message */
@@ -101,7 +102,7 @@ void SysTick_Handler (void)
 		MsgBuf_TX1.DataB = 0x0;
 		CAN1_SendMessage( &MsgBuf_TX1 );
 
-		// TODO: Check if required
+		// TODO: TESTING -  Check if required
 		/*
 		MsgBuf_TX1.Frame = 0x00080000;
 		MsgBuf_TX1.MsgID = ESC_CONTROL + 5;
@@ -120,6 +121,7 @@ void SysTick_Handler (void)
 	BMU.WattHrs += (BMU.Watts/360000.0);
 
 	STATS.ODOMETER += ESC.Velocity_KMH/360000.0;
+	STATS.TR_ODOMETER += ESC.Velocity_KMH/360000.0;
 
 
 	if(CLOCK.T_mS >= 100) // Calculate time
@@ -311,9 +313,9 @@ void menu_input_check (void)
 
 	if(RIGHT)
 	{
-		MENU.MENU_POS++;delayMs(1, 400);buzzer(50);
-		MENU.MENU_POS %= MENU.MENU_ITEMS;
-		if(MENU.MENU_POS==1){buzzer(300);}
+		menu_inc(&menu.menu_pos, menu.menu_items);
+		buzzer(50);
+		if(menu.menu_pos==1){buzzer(300);}else{delayMs(1,400);}
 		if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK){STATS.SWOC_ACK = TRUE;}
 		if((ESC.ERROR & 0x1) && !STATS.HWOC_ACK){STATS.HWOC_ACK = TRUE;BUZZER_OFF}
 		if(STATS.COMMS == 1)
@@ -330,15 +332,15 @@ void menu_input_check (void)
 		}
 
 		lcd_clear();
-		MENU.SELECTED = 0;
-		MENU.SUBMENU_POS = 0;
+		menu.selected = 0;
+		menu.submenu_pos = 0;
 	}
 
 	if(LEFT)
 	{
-		MENU.MENU_POS += MENU.MENU_ITEMS - 1;delayMs(1, 400);buzzer(50);
-		MENU.MENU_POS %= MENU.MENU_ITEMS;
-		if(MENU.MENU_POS==1){buzzer(300);}
+		menu_dec(&menu.menu_pos, menu.menu_items);
+		buzzer(50);
+		if(menu.menu_pos==1){buzzer(300);}else{delayMs(1,400);}
 		if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK){STATS.SWOC_ACK = TRUE;}
 		if((ESC.ERROR & 0x1) && !STATS.HWOC_ACK){STATS.HWOC_ACK = TRUE;BUZZER_OFF}
 		if(STATS.COMMS == 1)
@@ -355,8 +357,8 @@ void menu_input_check (void)
 		}
 
 		lcd_clear();
-		MENU.SELECTED = 0;
-		MENU.SUBMENU_POS = 0;
+		menu.selected = 0;
+		menu.submenu_pos = 0;
 	}
 
 	if(SWITCH_IO & 0x4)	{STATS.DRIVE_MODE = SPORTS;STATS.RAMP_SPEED = SPORTS_RAMP_SPEED;}
@@ -377,8 +379,8 @@ void menu_input_check (void)
 ******************************************************************************/
 int menu_fault_check (void)
 {
-	if (ESC.ERROR || (BMU.Status & 0xD37) || STATS.CAN_BUS){return 2;}
-	if (MPPT1.UNDV || MPPT1.OVT || MPPT2.UNDV || MPPT2.OVT || (BMU.Status & 0x1288)){return 1;}
+	if(ESC.ERROR || (BMU.Status & 0xD37) || STATS.CAN_BUS){return 2;}
+	if(MPPT1.UNDV || MPPT1.OVT || MPPT2.UNDV || MPPT2.OVT || (BMU.Status & 0x1288)){return 1;}
 	return 0;
 }
 
@@ -444,26 +446,26 @@ void menu_drive (void)
 ******************************************************************************/
 void menu_lights (void)
 {
-	if(MECH_BRAKE || RGN_POS){BRAKELIGHT_ON;}
-	else{BRAKELIGHT_OFF;}
+	if(MECH_BRAKE || RGN_POS)	{BRAKELIGHT_ON;}
+	else						{BRAKELIGHT_OFF;}
 
 	if(!RGN_POS)
 	{
-		if(REVERSE){REVERSE_ON;NEUTRAL_OFF;REGEN_OFF;DRIVE_OFF;STATS.IGNITION = 0x21;}
+		if(REVERSE)		{REVERSE_ON;NEUTRAL_OFF;REGEN_OFF;DRIVE_OFF;STATS.IGNITION = 0x21;}
 		else if(FORWARD){REVERSE_OFF;NEUTRAL_OFF;REGEN_OFF;DRIVE_ON;STATS.IGNITION = 0x28;}
-		else{REVERSE_OFF;NEUTRAL_ON;REGEN_OFF;DRIVE_OFF;STATS.IGNITION = 0x22;}
+		else			{REVERSE_OFF;NEUTRAL_ON;REGEN_OFF;DRIVE_OFF;STATS.IGNITION = 0x22;}
 	}
 	else
 	{
-		if(REVERSE){REVERSE_ON;NEUTRAL_OFF;REGEN_ON;DRIVE_OFF;STATS.IGNITION = 0x25;}
+		if(REVERSE)		{REVERSE_ON;NEUTRAL_OFF;REGEN_ON;DRIVE_OFF;STATS.IGNITION = 0x25;}
 		else if(FORWARD){REVERSE_OFF;NEUTRAL_OFF;REGEN_ON;DRIVE_ON;STATS.IGNITION = 0x2C;}
-		else{REVERSE_OFF;NEUTRAL_ON;REGEN_OFF;DRIVE_OFF;STATS.IGNITION = 0x22;}
+		else			{REVERSE_OFF;NEUTRAL_ON;REGEN_OFF;DRIVE_OFF;STATS.IGNITION = 0x22;}
 	}
 
-	if ((SWITCH_IO & 0x8) && (CLOCK.T_mS > 25 && CLOCK.T_mS < 75)){BLINKER_L_ON}
-	else {BLINKER_L_OFF}
-	if ((SWITCH_IO & 0x10) && (CLOCK.T_mS > 25 && CLOCK.T_mS < 75)){BLINKER_R_ON}
-	else {BLINKER_R_OFF}
+	if((SWITCH_IO & 0x8) && (CLOCK.T_mS > 25 && CLOCK.T_mS < 75)){BLINKER_L_ON}
+	else{BLINKER_L_OFF}
+	if((SWITCH_IO & 0x10) && (CLOCK.T_mS > 25 && CLOCK.T_mS < 75)){BLINKER_R_ON}
+	else{BLINKER_R_OFF}
 
 	if(SWITCH_IO & 0x4)	{SPORTS_ON;ECO_OFF}
 	else				{SPORTS_OFF;ECO_ON}
@@ -491,7 +493,7 @@ void menu_can_handler (void)
 	 * Kill drive - 0x510: use loop to prevent drive logic running. Not done in can.c to release Rx buffer
 	 * SWOC Error - 0x401: Send MC reset packet
 	 */
-	if ( CAN1RxDone == TRUE )
+	if(CAN1RxDone == TRUE)
 	{
 		CAN1RxDone = FALSE;
 
@@ -500,10 +502,10 @@ void menu_can_handler (void)
 			lcd_clear();
 			char buffer[20];
 
-			if(MENU.DRIVER == 3)
+			if(menu.driver == 3)
 			{
 				_lcd_putTitle("-GOT DICK-");
-				lcd_putstring(1,0, "                    ");
+				lcd_putstring(1,0, EROW);
 				sprintf(buffer, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", 0x00, 0x02, 0x04, 0x04, 0x05, 0x00, 0x02, 0x04, 0x04, 0x05, 0x00, 0x02, 0x04, 0x04, 0x05, 0x00, 0x02, 0x04, 0x04, 0x05);
 				lcd_putstring(2,0, buffer);
 				sprintf(buffer, "%c%c   %c%c   %c%c   %c%c   ", 0x01, 0x03, 0x01, 0x03, 0x01, 0x03, 0x01, 0x03);
@@ -525,11 +527,13 @@ void menu_can_handler (void)
 			}
 			lcd_clear();
 		}
-		else if (MsgBuf_RX1.MsgID == ESC_BASE + 1)
+		else if(MsgBuf_RX1.MsgID == ESC_BASE + 1 && ESC.ERROR == 0x2 && (AUTO_SWOC || menu.driver == 0))
 		{
 			if(ESC.ERROR == 0x2)
 			{
 				esc_reset();
+				buzzer(100);
+				delayMs(1,100);
 				buzzer(100);
 				NEUTRAL_OFF;REVERSE_OFF;DRIVE_OFF;REGEN_OFF;
 			}
@@ -616,9 +620,9 @@ void esc_reset (void)
 void recallVariables (void)
 {
 	// Restore Non-Volatile Data
-	STATS.BUZZER = EE_Read(AddressBUZZ);
-
+	STATS.BUZZER = EE_Read(AddressBUZZ) & 0b1;
 	STATS.ODOMETER = conv_uint_float(EE_Read(AddressODO));
+	STATS.TR_ODOMETER = conv_uint_float(EE_Read(AddressODOTR));
 	STATS.MAX_SPEED = 0;
 	STATS.RAMP_SPEED = 5;
 	STATS.CRUISE_SPEED = 0;
@@ -645,9 +649,10 @@ void storeVariables (void)
 	{
 		EE_Write(AddressODO, conv_float_uint(STATS.ODOMETER));
 		delayMs(1,3);
+		EE_Write(AddressODOTR, conv_float_uint(STATS.TR_ODOMETER));
+		delayMs(1,3);
 	}
-
-	else
+	else // TODO: MAJOR - change I2C to handle multiple words in one write
 	{
 		EE_Write(AddressBMUWHR, conv_float_uint(BMU.WattHrs));
 		delayMs(1,3);
@@ -920,7 +925,7 @@ int main (void)
 
 	recallVariables();
 
-	menuInit();
+	menu_init();
 
 	while (FORWARD || REVERSE)
 	{
@@ -933,13 +938,13 @@ int main (void)
 
 	while(1) { // Exiting this loop ends the program
 		if ((ESC.ERROR & 0x1) && !STATS.HWOC_ACK) // on unacknowledged HWOC error, show error screen
-		{MENU.errors[1]();}
-		else if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK && !AUTO_SWOC) // on unacknowledged SWOC error, show error screen
-		{MENU.errors[0]();}
-		else if (STATS.COMMS)
-		{MENU.errors[2]();}
-		else if (STATS.CAN_BUS)
-		{MENU.errors[3]();}
+		{menu.errors[1]();}
+		else if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK && !AUTO_SWOC && menu.driver) // show SWOC screen when auto reset off and not on display mode and error not acknowledged
+		{menu.errors[0]();}
+		else if(STATS.COMMS)
+		{menu.errors[2]();}
+		else if(STATS.CAN_BUS)
+		{menu.errors[3]();}
 		else
 		{
 			if(STATS.SWOC_ACK && !(ESC.ERROR & 0x2)) // if acknowledged previous error is reset
@@ -947,9 +952,8 @@ int main (void)
 			if(STATS.HWOC_ACK && !(ESC.ERROR & 0x1)) // if acknowledged previous error is reset
 			{STATS.HWOC_ACK = FALSE;}
 
-			MENU.menus[MENU.MENU_POS]();
+			menu.menus[menu.menu_pos]();
 		}
-
 		menu_mppt_poll();
 		menu_input_check();
 		if((STATS.FAULT = menu_fault_check()) != 2){menu_drive();} // no drive on fault code 2

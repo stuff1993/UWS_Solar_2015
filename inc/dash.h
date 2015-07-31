@@ -98,8 +98,8 @@
 
 /// EEPROM Addresses ///
 #define AddressBUZZ 	0
-#define AddressBL 		4 // Trip ODO for kieran
-#define AddressODO		8
+#define AddressODO		4
+#define AddressODOTR	8
 #define AddressMPPT1WHR	12
 #define AddressBMUWHR	16
 #define AddressMPPT2WHR	20

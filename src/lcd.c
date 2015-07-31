@@ -101,10 +101,9 @@ void lcd_putstring( unsigned char line, unsigned char Pos, char *string )
 
 	lcd_gotoxy( line, Pos );
 
-	while(*string != '\0' && len--)
+	while(*string++ != '\0' && len--)
 	{
 		lcd_putchar( *string );
-		string++;
 	}
 }
 

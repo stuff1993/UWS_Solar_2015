@@ -140,7 +140,7 @@ typedef struct // MOTORCONTROLLER
 	float DC_AmpHrs;			// DC Bus AmpHrs
 #endif // _MC_AMPHRS
 #if _MC_ODO
-	float Odometer;				// Distance traveled since reset
+	float Odometer;				// Distance traveled since reset (m)
 #endif // _MC_ODO
 #if _MC_SLIP
 	float Slip_Speed;			// Motor Slip Speed (Hz)
@@ -263,20 +263,24 @@ struct // BMU
 
 struct // STATS
 {
-	unsigned int RAMP_SPEED;
-	uint8_t IGNITION;
-	float ODOMETER;
-	float MAX_SPEED;
-	float CRUISE_SPEED;
+	unsigned int RAMP_SPEED; // .1%
+	uint8_t IGNITION; // TODO: TESTING - Remove if 0x505 packet unused
+	float ODOMETER; // km
+	float TR_ODOMETER; // km
+	float MAX_SPEED; // kmh
+	float CRUISE_SPEED; // kmh
 	FLAG(DRIVE_MODE)
 	FLAG(BUZZER)
 	FLAG(MPPT_POLL_COUNT)
+	// Errors
 	FLAG(SWOC_ACK)
 	FLAG(HWOC_ACK)
 	FLAG(COMMS)
 	FLAG(CAN_BUS)
+	// Cruise
 	FLAG(CR_ACT)
 	FLAG(CR_STS)
+
 	unsigned int FAULT :2;
 }STATS;
 
@@ -290,7 +294,7 @@ struct // DRIVE
 
 struct CLOCK_STRUCT
 {
-	uint8_t		T_mS;
+	uint8_t		T_mS; // (mS / 10)
 	uint8_t		T_S;
 	uint8_t		T_M;
 	uint8_t		T_H;

@@ -21,13 +21,13 @@ struct MENUS
 {
 	void (*menus[MAX_MENU_ITEMS]) (void);
 	void (*errors[ERROR_ITEMS]) (void);
-	uint8_t DRIVER;
-	uint8_t MENU_ITEMS;
-	uint8_t MENU_POS;
-	uint8_t SUBMENU_ITEMS;
-	uint8_t SUBMENU_POS;
-	FLAG(SELECTED)
-}MENU;
+	uint8_t driver;
+	uint8_t menu_items;
+	uint8_t menu_pos;
+	uint8_t submenu_items;
+	uint8_t submenu_pos;
+	FLAG(selected)
+}menu;
 
 // startup screens
 void lcd_display_errOnStart(void);
@@ -57,8 +57,11 @@ void lcd_display_HWOC(void);
 void lcd_display_COMMS(void);
 
 void _lcd_putTitle(char*);
-void _lcd_padding (int row, int pos, int len);
+void _lcd_padding(int row, int pos, int len);
 
-void menuInit (void);
+void menu_inc(uint8_t *_pos, uint8_t _total);
+void menu_dec(uint8_t *_pos, uint8_t _total);
+
+void menu_init (void);
 
 #endif /* MENU_H_ */
