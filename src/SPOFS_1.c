@@ -21,11 +21,13 @@
 #include "timer.h"
 #include "lcd.h"
 #include "adc.h"
-#include "can.h"
 #include "i2c.h"
 #include "struct.h"
 #include "dash.h"
 #include "menu.h"
+#include "can.h"
+
+// TODO: limit throttle in display mode?
 
 /////////////////////////////   CAN    ////////////////////////////////
 CAN_MSG MsgBuf_TX1, MsgBuf_TX2; /* TX and RX Buffers for CAN message */
@@ -83,9 +85,9 @@ void SysTick_Handler (void)
 {
 	CLOCK.T_mS++;
 
-	// MinorSec: DIU CAN Heartbeat
-	if (CLOCK.T_mS % 10 == 0) // Every 100 mS send heartbeat CAN packets
-	{ // TODO: need to wait for CAN setup
+	// MinorSec: DIU CAN Heart Beat
+	if (CLOCK.T_mS % 10 == 0) // Every 100 mS send heart beat CAN packets
+	{
 		MsgBuf_TX1.Frame = 0x00080000;
 		MsgBuf_TX1.MsgID = ESC_CONTROL + 1;
 		MsgBuf_TX1.DataA = conv_float_uint(DRIVE.Speed_RPM);
@@ -110,14 +112,14 @@ void SysTick_Handler (void)
 	}
 
 	// MinorSec:  Time sensitive Calculations
-	ESC.WattHrs += (ESC.Watts/360000);
+	ESC.WattHrs += (ESC.Watts/360000.0);
 
-	MPPT1.WattHrs += (MPPT1.Watts/360000);
-	MPPT2.WattHrs += (MPPT2.Watts/360000);
+	MPPT1.WattHrs += (MPPT1.Watts/360000.0);
+	MPPT2.WattHrs += (MPPT2.Watts/360000.0);
 
-	BMU.WattHrs += (BMU.Watts/360000);
+	BMU.WattHrs += (BMU.Watts/360000.0);
 
-	STATS.ODOMETER += ESC.Velocity_KMH/360000;
+	STATS.ODOMETER += ESC.Velocity_KMH/360000.0;
 
 
 	if(CLOCK.T_mS >= 100) // Calculate time
@@ -150,46 +152,46 @@ void menu_mppt_poll (void)
 {
 	STATS.MPPT_POLL_COUNT ^= 0b1; 								// Toggle bit. Selects which MPPT to poll this round
 
-	// Send request to MPPT
-	if((LPC_CAN2->GSR & (1 << 3)) && STATS.MPPT_POLL_COUNT)		// If previous transmission is complete, send message;
+	// 1. Sends request packet to MPPT (125K CAN Bus)
+	if((LPC_CAN2->GSR & (1 << 3)) && STATS.MPPT_POLL_COUNT)	// Check Global Status Reg
 	{
-		MsgBuf_TX2.MsgID = MPPT2_BASE; 						// Explicit Standard ID
+		MsgBuf_TX2.MsgID = MPPT2_BASE;
 		CAN2_SendMessage( &MsgBuf_TX2 );
 	}
 
-	else if(LPC_CAN2->GSR & (1 << 3))							// If previous transmission is complete, send message;
+	else if(LPC_CAN2->GSR & (1 << 3))						// Check Global Status Reg
 	{
-		MsgBuf_TX2.MsgID = MPPT1_BASE; 						// Explicit Standard ID
+		MsgBuf_TX2.MsgID = MPPT1_BASE;
 		CAN2_SendMessage( &MsgBuf_TX2 );
 	}
 
-	// Push previous data to car
-	if((LPC_CAN1->GSR & (1 << 3)) && STATS.MPPT_POLL_COUNT)		// If previous transmission is complete, send message;
+	// 2. Sends previous MPPT packet to car (500K CAN Bus)
+	if((LPC_CAN1->GSR & (1 << 3)) && STATS.MPPT_POLL_COUNT)	// Check Global Status Reg
 	{
-		MsgBuf_TX1.Frame = 0x00070000; 							// 11-bit, no RTR, DLC is 8 bytes
-		MsgBuf_TX1.MsgID = MPPT2_RPLY; 						// Explicit Standard ID
-		if (MPPT2.Connected) // Relay data
+		MsgBuf_TX1.Frame = 0x00070000; 						// 11-bit, no RTR, DLC is 7 bytes
+		MsgBuf_TX1.MsgID = MPPT2_RPLY;
+		if (MPPT2.Connected)
 		{
 			MsgBuf_TX1.DataA = fakeMPPT2.DataA;
 			MsgBuf_TX1.DataB = fakeMPPT2.DataB;
 		}
-		else // No data
+		else
 		{
 			MsgBuf_TX1.DataA = 0x0;
 			MsgBuf_TX1.DataB = 0x0;
 		}
 		CAN1_SendMessage( &MsgBuf_TX1 );
 	}
-	else if(LPC_CAN1->GSR & (1 << 3))							// If previous transmission is complete, send message;
+	else if(LPC_CAN1->GSR & (1 << 3))						// Check Global Status Reg
 	{
-		MsgBuf_TX1.Frame = 0x00070000; 							// 11-bit, no RTR, DLC is 8 bytes
-		MsgBuf_TX1.MsgID = MPPT1_RPLY; 						// Explicit Standard ID
-		if (MPPT1.Connected) // Relay data
+		MsgBuf_TX1.Frame = 0x00070000; 						// 11-bit, no RTR, DLC is 7 bytes
+		MsgBuf_TX1.MsgID = MPPT1_RPLY;
+		if (MPPT1.Connected)
 		{
 			MsgBuf_TX1.DataA = fakeMPPT1.DataA;
 			MsgBuf_TX1.DataB = fakeMPPT1.DataB;
 		}
-		else // No data
+		else
 		{
 			MsgBuf_TX1.DataA = 0x0;
 			MsgBuf_TX1.DataB = 0x0;
@@ -197,24 +199,23 @@ void menu_mppt_poll (void)
 		CAN1_SendMessage( &MsgBuf_TX1 );
 	}
 
-	// Receive new MPPT data
+	// 3. Receives new packet and extracts data (125K CAN Bus)
 	if ( CAN2RxDone == TRUE )
 	{
 		CAN2RxDone = FALSE;
-		if		(MsgBuf_RX2.MsgID == MPPT1_BASE + MPPT_RPLY){mppt_data_extract(&MPPT1, &fakeMPPT1);}
-		else if	(MsgBuf_RX2.MsgID == MPPT2_BASE + MPPT_RPLY){mppt_data_extract(&MPPT2, &fakeMPPT2);}
+		if		(MsgBuf_RX2.MsgID == MPPT1_RPLY){mppt_data_extract(&MPPT1, &fakeMPPT1);}
+		else if	(MsgBuf_RX2.MsgID == MPPT2_RPLY){mppt_data_extract(&MPPT2, &fakeMPPT2);}
 
-		// Everything is correct, reset buffer
+		// Reset buffer to prevent packets being received multiple times
 		MsgBuf_RX2.Frame = 0x0;
 		MsgBuf_RX2.MsgID = 0x0;
 		MsgBuf_RX2.DataA = 0x0;
 		MsgBuf_RX2.DataB = 0x0;
-	} // Message on CAN 2 received
+	}
 
-	// Check mppt connection timeout
+	// Check mppt connection timeouts - clear instantaneous data
 	if(!MPPT1.Connected)
 	{
-		// Reset Power Variables if not connected
 		MPPT1.VIn = 0;
 		MPPT1.IIn = 0;
 		MPPT1.VOut = 0;
@@ -226,7 +227,6 @@ void menu_mppt_poll (void)
 
 	if(!MPPT2.Connected)
 	{
-		// Reset Power Variables if not connected
 		MPPT2.VIn = 0;
 		MPPT2.IIn = 0;
 		MPPT2.VOut = 0;
@@ -280,10 +280,10 @@ void mppt_data_extract (MPPT *_MPPT, fakeMPPTFRAME *_fkMPPT)
 	_VOut = _VOut * 2.10;						// Scaling
 
 	// Update the global variables after IIR filtering
-	_MPPT->Tmp = iirFILTER(((_Data_B & 0xFF0000) >> 16), _MPPT->Tmp, 8); //infinite impulse response filtering
-	_MPPT->VIn = iirFILTER(_VIn, _MPPT->VIn, IIR_FILTER_GAIN);
-	_MPPT->IIn = iirFILTER(_IIn, _MPPT->IIn, IIR_FILTER_GAIN);
-	_MPPT->VOut = iirFILTER(_VOut, _MPPT->VOut, IIR_FILTER_GAIN);
+	_MPPT->Tmp = iirFILTER(((_Data_B & 0xFF0000) >> 16), _MPPT->Tmp, IIR_GAIN_THERMAL);
+	_MPPT->VIn = iirFILTER(_VIn, _MPPT->VIn, IIR_GAIN_ELECTRICAL);
+	_MPPT->IIn = iirFILTER(_IIn, _MPPT->IIn, IIR_GAIN_ELECTRICAL);
+	_MPPT->VOut = iirFILTER(_VOut, _MPPT->VOut, IIR_GAIN_ELECTRICAL);
 	if(_MPPT->Connected<2){_MPPT->Connected = 2;}
 }
 
@@ -312,16 +312,16 @@ void menu_input_check (void)
 	if(RIGHT)
 	{
 		MENU.MENU_POS++;delayMs(1, 400);buzzer(50);
-		MENU.MENU_POS %= MENU.ACTUAL_ITEMS;
+		MENU.MENU_POS %= MENU.MENU_ITEMS;
 		if(MENU.MENU_POS==1){buzzer(300);}
 		if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK){STATS.SWOC_ACK = TRUE;}
 		if((ESC.ERROR & 0x1) && !STATS.HWOC_ACK){STATS.HWOC_ACK = TRUE;BUZZER_OFF}
 		if(STATS.COMMS == 1)
 		{
-			if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
+			if((LPC_CAN1->GSR & (1 << 3)))				// Check Global Status Reg
 			{
-				MsgBuf_TX1.Frame = 0x00010000; 			/* 11-bit, no RTR, DLC is 1 byte */
-				MsgBuf_TX1.MsgID = DASH_RPLY + 1; 		/* Explicit Standard ID */
+				MsgBuf_TX1.Frame = 0x00010000; 			// 11-bit, no RTR, DLC is 1 byte
+				MsgBuf_TX1.MsgID = DASH_RPLY + 1;
 				MsgBuf_TX1.DataA = 0x0;
 				MsgBuf_TX1.DataB = 0x0;
 				CAN1_SendMessage( &MsgBuf_TX1 );
@@ -331,23 +331,22 @@ void menu_input_check (void)
 
 		lcd_clear();
 		MENU.SELECTED = 0;
-		MENU.ITEM_SELECTOR = 0;
 		MENU.SUBMENU_POS = 0;
 	}
 
 	if(LEFT)
 	{
-		MENU.MENU_POS--;delayMs(1, 400);buzzer(50);
-		MENU.MENU_POS %= MENU.ACTUAL_ITEMS;
+		MENU.MENU_POS += MENU.MENU_ITEMS - 1;delayMs(1, 400);buzzer(50);
+		MENU.MENU_POS %= MENU.MENU_ITEMS;
 		if(MENU.MENU_POS==1){buzzer(300);}
 		if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK){STATS.SWOC_ACK = TRUE;}
 		if((ESC.ERROR & 0x1) && !STATS.HWOC_ACK){STATS.HWOC_ACK = TRUE;BUZZER_OFF}
 		if(STATS.COMMS == 1)
 		{
-			if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
+			if((LPC_CAN1->GSR & (1 << 3)))				// Check Global Status Reg
 			{
-				MsgBuf_TX1.Frame = 0x00010000; 			/* 11-bit, no RTR, DLC is 1 byte */
-				MsgBuf_TX1.MsgID = DASH_RPLY + 1; 		/* Explicit Standard ID */
+				MsgBuf_TX1.Frame = 0x00010000; 			// 11-bit, no RTR, DLC is 1 byte
+				MsgBuf_TX1.MsgID = DASH_RPLY + 1;
 				MsgBuf_TX1.DataA = 0x0;
 				MsgBuf_TX1.DataB = 0x0;
 				CAN1_SendMessage( &MsgBuf_TX1 );
@@ -357,11 +356,9 @@ void menu_input_check (void)
 
 		lcd_clear();
 		MENU.SELECTED = 0;
-		MENU.ITEM_SELECTOR = 0;
 		MENU.SUBMENU_POS = 0;
 	}
 
-	// Check Sports/Economy switch
 	if(SWITCH_IO & 0x4)	{STATS.DRIVE_MODE = SPORTS;STATS.RAMP_SPEED = SPORTS_RAMP_SPEED;}
 	else				{STATS.DRIVE_MODE = ECONOMY;STATS.RAMP_SPEED = ECONOMY_RAMP_SPEED;}
 }
@@ -379,8 +376,8 @@ void menu_input_check (void)
 **
 ******************************************************************************/
 int menu_fault_check (void)
-{ // TODO: POWERGOOD pin? Critical fault? Trigger interrupt on falling edge, 12v wil be dropping ie no can
-	if (ESC.ERROR || (BMU.Status & 0xD37)){return 2;}
+{
+	if (ESC.ERROR || (BMU.Status & 0xD37) || STATS.CAN_BUS){return 2;}
 	if (MPPT1.UNDV || MPPT1.OVT || MPPT2.UNDV || MPPT2.OVT || (BMU.Status & 0x1288)){return 1;}
 	return 0;
 }
@@ -505,11 +502,12 @@ void menu_can_handler (void)
 
 			if(MENU.DRIVER == 3)
 			{
-				_lcd_putTitle("-DICKDICK-");
+				_lcd_putTitle("-GOT DICK-");
 				lcd_putstring(1,0, "                    ");
 				sprintf(buffer, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", 0x00, 0x02, 0x04, 0x04, 0x05, 0x00, 0x02, 0x04, 0x04, 0x05, 0x00, 0x02, 0x04, 0x04, 0x05, 0x00, 0x02, 0x04, 0x04, 0x05);
 				lcd_putstring(2,0, buffer);
 				sprintf(buffer, "%c%c   %c%c   %c%c   %c%c   ", 0x01, 0x03, 0x01, 0x03, 0x01, 0x03, 0x01, 0x03);
+				lcd_putstring(3,0, buffer);
 			}
 			else
 			{
@@ -596,8 +594,11 @@ void menu_calc (void)
 ******************************************************************************/
 void esc_reset (void)
 {
+	// RESET MOTOR CONTROLLERS
+	// see WS22 user manual and Tritium CAN network specs
+	// try MC + 25 (0x19) + msg "RESETWS" (TRI88.004 ver3 doc, July 2013)
 	MsgBuf_TX1.Frame = 0x00080000; 		// 11-bit, no RTR, DLC is 8 bytes
-	MsgBuf_TX1.MsgID = ESC_CONTROL + 3; 			// Explicit Standard ID
+	MsgBuf_TX1.MsgID = ESC_CONTROL + 3;
 	MsgBuf_TX1.DataB = 0x0;
 	MsgBuf_TX1.DataA = 0x0;
 	CAN1_SendMessage( &MsgBuf_TX1 );
@@ -666,7 +667,7 @@ void storeVariables (void)
 ** Returned value:		Data at address
 **
 ******************************************************************************/
-uint32_t EE_Read (uint32_t _EEadd)
+uint32_t EE_Read (uint16_t _EEadd)
 {
 	uint32_t retDATA = 0;
 
@@ -684,34 +685,34 @@ uint32_t EE_Read (uint32_t _EEadd)
 ** Description:			Saves a word to EEPROM (Uses I2CWrite)
 **
 ** Parameters:			1. Address to save to
-** 						2. Data to save
+** 						2. Data to save (convert to uint with converter first)
 ** Returned value:		None
 **
 ******************************************************************************/
-void EE_Write (uint32_t _EEadd, uint32_t _EEdata)
+void EE_Write (uint16_t _EEadd, uint32_t _EEdata)
 {
-	uint32_t temp1 = (_EEdata & 0x000000FF);
-	uint32_t temp2 = (_EEdata & 0x0000FF00) >> 8;
-	uint32_t temp3 = (_EEdata & 0x00FF0000) >> 16;
-	uint32_t temp4 = (_EEdata & 0xFF000000) >> 24;
+	uint8_t temp0 = (_EEdata & 0x000000FF);
+	uint8_t temp1 = (_EEdata & 0x0000FF00) >> 8;
+	uint8_t temp2 = (_EEdata & 0x00FF0000) >> 16;
+	uint8_t temp3 = (_EEdata & 0xFF000000) >> 24;
 
-	I2C_Write(_EEadd, temp1,temp2,temp3,temp4);
+	I2C_Write(_EEadd, temp0,temp1,temp2,temp3);
 }
 
 /******************************************************************************
 ** Function name:		I2C_Read
 **
-** Description:			Reads a word from EEPROM
+** Description:			Reads a byte from EEPROM
 **
 ** Parameters:			Address to read from
 ** Returned value:		Data at address
 **
 ******************************************************************************/
-uint32_t I2C_Read (uint32_t _EEadd)
+uint32_t I2C_Read (uint16_t _EEadd)
 {
 	int i;
 
-	for ( i = 0; i < BUFSIZE; i++ )	  	/* clear buffer */
+	for ( i = 0; i < BUFSIZE; i++ )	  	// clear buffer
 	{
 		I2CMasterBuffer[PORT_USED][i] = 0;
 	}
@@ -719,8 +720,8 @@ uint32_t I2C_Read (uint32_t _EEadd)
 	I2CWriteLength[PORT_USED] = 3;
 	I2CReadLength[PORT_USED] = 1;
 	I2CMasterBuffer[PORT_USED][0] = _24LC256_ADDR;
-	I2CMasterBuffer[PORT_USED][1] = 0x00;	/* address */
-	I2CMasterBuffer[PORT_USED][2] = _EEadd;		/* address */
+	I2CMasterBuffer[PORT_USED][1] = 0x00;		// address
+	I2CMasterBuffer[PORT_USED][2] = _EEadd;		// address
 	I2CMasterBuffer[PORT_USED][3] = _24LC256_ADDR | RD_BIT;
 	I2CEngine( PORT_USED );
 	I2CStop(PORT_USED);
@@ -738,13 +739,13 @@ uint32_t I2C_Read (uint32_t _EEadd)
 ** Returned value:		None
 **
 ******************************************************************************/
-void I2C_Write (uint32_t _EEadd, uint32_t data0, uint32_t data1, uint32_t data2, uint32_t data3)
+void I2C_Write (uint16_t _EEadd, uint8_t data0, uint8_t data1, uint8_t data2, uint8_t data3)
 {
 	I2CWriteLength[PORT_USED] = 7;
 	I2CReadLength[PORT_USED] = 0;
 	I2CMasterBuffer[PORT_USED][0] = _24LC256_ADDR;
-	I2CMasterBuffer[PORT_USED][1] = 0x00;			/* address */
-	I2CMasterBuffer[PORT_USED][2] = _EEadd;	/* address */
+	I2CMasterBuffer[PORT_USED][1] = 0x00;		// address
+	I2CMasterBuffer[PORT_USED][2] = _EEadd;		// address
 	I2CMasterBuffer[PORT_USED][3] = data0;
 	I2CMasterBuffer[PORT_USED][4] = data1;
 	I2CMasterBuffer[PORT_USED][5] = data2;
@@ -761,7 +762,7 @@ void I2C_Write (uint32_t _EEadd, uint32_t data0, uint32_t data1, uint32_t data2,
 **
 ** Parameters:			1. Input data
 ** 						2. Existing data
-** 						3. Gain factor - Default value -> IIR_FILTER_GAIN
+** 						3. Gain factor
 ** Returned value:		Smoothed value
 **
 ******************************************************************************/
@@ -897,9 +898,12 @@ int main (void)
 	setCANBUS1();
 	setCANBUS2();
 
-	I2C1Init();
+	DRIVE.Current = 0; 		// Values set here to stop car from accelerating if memory is not blank on reset
+	DRIVE.Speed_RPM = 0;
 
 	SysTick_Config(SystemCoreClock / 100);		// 10mS Systicker.
+
+	I2C1Init();
 
 	ADCInit(ADC_CLK);
 
@@ -928,12 +932,14 @@ int main (void)
 	}
 
 	while(1) { // Exiting this loop ends the program
-		//if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK) // on unacknowledged SWOC error, show error screen
-		//{MENU.errors[0]();}
-		if ((ESC.ERROR & 0x1) && !STATS.HWOC_ACK) // on unacknowledged SWOC error, show error screen
+		if ((ESC.ERROR & 0x1) && !STATS.HWOC_ACK) // on unacknowledged HWOC error, show error screen
 		{MENU.errors[1]();}
+		else if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK && !AUTO_SWOC) // on unacknowledged SWOC error, show error screen
+		{MENU.errors[0]();}
 		else if (STATS.COMMS)
 		{MENU.errors[2]();}
+		else if (STATS.CAN_BUS)
+		{MENU.errors[3]();}
 		else
 		{
 			if(STATS.SWOC_ACK && !(ESC.ERROR & 0x2)) // if acknowledged previous error is reset

@@ -10,6 +10,10 @@
 
 #include "struct.h"
 
+#ifndef AUTO_SWOC
+#define AUTO_SWOC 1 // auto reset SWOCs
+#endif
+
 #define WHEEL_D_M (0.557) // metres
 
 /// OUTPUTS
@@ -75,7 +79,8 @@
 #define RIGHT_ON		!(LPC_GPIO1->FIOPIN & (1<<2))
 
 
-#define IIR_FILTER_GAIN	16
+#define IIR_GAIN_ELECTRICAL	16
+#define IIR_GAIN_THERMAL	8
 
 #define PORT_USED	1	// I2C port
 
@@ -119,12 +124,13 @@ void menu_drive(void);
 void menu_lights(void);
 void menu_can_handler(void);
 void menu_calc(void);
+void esc_reset (void);
 void recallVariables(void);
 void storeVariables(void);
-uint32_t EE_Read(uint32_t _EEadd);
-void EE_Write(uint32_t _EEadd, uint32_t data);
-uint32_t I2C_Read(uint32_t _EEadd);
-void I2C_Write(uint32_t _EEadd, uint32_t data0, uint32_t data1, uint32_t data2, uint32_t data3);
+uint32_t EE_Read(uint16_t _EEadd);
+void EE_Write(uint16_t _EEadd, uint32_t data);
+uint32_t I2C_Read(uint16_t _EEadd);
+void I2C_Write(uint16_t _EEadd, uint8_t data0, uint8_t data1, uint8_t data2, uint8_t data3);
 uint32_t iirFILTER(uint32_t _data_in, uint32_t _cur_data, uint8_t _gain);
 void init_GPIO(void);
 void buzzer(uint32_t val);

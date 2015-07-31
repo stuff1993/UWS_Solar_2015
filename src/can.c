@@ -9,6 +9,7 @@
 #include "type.h"
 #include "can.h"
 #include "dash.h"
+#include "menu.h"
 #include "struct.h"
 #include "inttofloat.h"
 
@@ -59,7 +60,7 @@ void CAN_ISR_Rx1( void )
 	case ESC_BASE + 1:
 #if _MC_ERR
 	ESC.ERROR = (MsgBuf_RX1.DataA >> 16);
-	if(ESC.ERROR){CAN1RxDone = TRUE;NEUTRAL_ON;REVERSE_ON;DRIVE_ON;REGEN_ON;}
+	if(ESC.ERROR == 0x2 && (AUTO_SWOC || MENU.DRIVER)){CAN1RxDone = TRUE;NEUTRAL_ON;REVERSE_ON;DRIVE_ON;REGEN_ON;}
 #endif
 #if _MC_LIM
 	ESC.LIMIT = (MsgBuf_RX1.DataA & 0xFFFF);
@@ -231,7 +232,7 @@ void CAN_ISR_Rx1( void )
 	break;
 	case BMU_BASE + BMU_INFO + 6:
 	BMU.Battery_V = MsgBuf_RX1.DataB / 1000; // Packet is in mV and mA
-	BMU.Battery_I = iirFILTER(MsgBuf_RX1.DataA / 1000, BMU.Battery_I, IIR_FILTER_GAIN);
+	BMU.Battery_I = iirFILTER(MsgBuf_RX1.DataA / 1000, BMU.Battery_I, IIR_GAIN_ELECTRICAL);
 	break;
 	case BMU_BASE + BMU_INFO + 7:
 	// Can extract 8 Status flags here but they are also contained with others in BASE + 9

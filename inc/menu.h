@@ -8,22 +8,24 @@
 #ifndef MENU_H_
 #define MENU_H_
 
-#define	MENU_ITEMS 15
-#define ERROR_ITEMS 3
+#define	MAX_MENU_ITEMS 15
+#define ERROR_ITEMS 4
 
 #ifndef FLAG
 #define FLAG(x) unsigned int x :1;
 #endif // FLAG(x)
 
+#define EROW 	"                    "
+
 struct MENUS
 {
-	void (*menus[MENU_ITEMS]) (void);
+	void (*menus[MAX_MENU_ITEMS]) (void);
 	void (*errors[ERROR_ITEMS]) (void);
 	uint8_t DRIVER;
-	uint8_t ACTUAL_ITEMS;
+	uint8_t MENU_ITEMS;
 	uint8_t MENU_POS;
+	uint8_t SUBMENU_ITEMS;
 	uint8_t SUBMENU_POS;
-	uint8_t ITEM_SELECTOR;
 	FLAG(SELECTED)
 }MENU;
 
@@ -55,8 +57,7 @@ void lcd_display_HWOC(void);
 void lcd_display_COMMS(void);
 
 void _lcd_putTitle(char*);
-void _lcd_emptyRow (int row);
-void _lcd_padding (char *buffer, int len);
+void _lcd_padding (int row, int pos, int len);
 
 void menuInit (void);
 

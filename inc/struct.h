@@ -263,7 +263,7 @@ struct // BMU
 
 struct // STATS
 {
-	int RAMP_SPEED;
+	unsigned int RAMP_SPEED;
 	uint8_t IGNITION;
 	float ODOMETER;
 	float MAX_SPEED;
@@ -274,6 +274,7 @@ struct // STATS
 	FLAG(SWOC_ACK)
 	FLAG(HWOC_ACK)
 	FLAG(COMMS)
+	FLAG(CAN_BUS)
 	FLAG(CR_ACT)
 	FLAG(CR_STS)
 	unsigned int FAULT :2;
