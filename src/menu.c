@@ -713,7 +713,7 @@ void lcd_display_options (void)
 				delayMs(1,500);
 				break;
 			case 1:
-				menu.driver = (++menu.driver) % 4;
+				menu.driver = (menu.driver + 1) % 4;
 				delayMs(1,500);
 				break;
 			default:
@@ -843,7 +843,7 @@ void lcd_display_odometer (void)
 	}
 	else if (INCREMENT && DECREMENT)
 	{
-		delayMS(1,1000);
+		delayMs(1,1000);
 		if (INCREMENT && DECREMENT)
 		{
 			STATS.ODOMETER = 0;
