@@ -40,7 +40,7 @@
 #define _BMU_CELL_V 1
 #define _BMU_CMU_TMP 1
 #define _BMU_BAL_THRES 0
-#define _BMU_CMU_CNT 1
+#define _BMU_CMU_CNT 0
 #define _BMU_VER 0
 #define _BMU_FAN 0			// 1 = Fan0, 2 = Fan1, 3 = BOTH
 #define _BMU_12V_CONSUM 0
@@ -263,15 +263,17 @@ struct // BMU
 
 struct // STATS
 {
-	unsigned int RAMP_SPEED; // .1%
-	uint8_t IGNITION; // TODO: TESTING - Remove if 0x505 packet unused
-	float ODOMETER; // km
-	float TR_ODOMETER; // km
-	float MAX_SPEED; // kmh
-	float CRUISE_SPEED; // kmh
+	unsigned int RAMP_SPEED;	// .1%
+	uint8_t IGNITION; 			// TODO: TESTING - Remove if 0x505 packet unused
+	uint8_t BUZ_TIM;			// 10mS ticks to sound buzzer
+	float ODOMETER; 			// km
+	float TR_ODOMETER; 			// km
+	float MAX_SPEED; 			// kmh
+	float CRUISE_SPEED; 		// kmh
 	FLAG(DRIVE_MODE)
 	FLAG(BUZZER)
 	FLAG(MPPT_POLL_COUNT)
+	FLAG(ARMED)
 	// Errors
 	FLAG(SWOC_ACK)
 	FLAG(HWOC_ACK)

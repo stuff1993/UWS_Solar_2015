@@ -23,6 +23,9 @@
 #define FAULT_ON		LPC_GPIO0->FIOSET = (1<<27);
 #define FAULT_OFF		LPC_GPIO0->FIOCLR = (1<<27);
 
+#define HV_ON			LPC_GPIO1->FIOSET = (1<<8);
+#define HV_OFF			LPC_GPIO1->FIOCLR = (1<<8);
+
 #define BLINKER_R_ON	LPC_GPIO1->FIOSET = (1<<19);LPC_GPIO3->FIOSET = (1<<26);
 #define BLINKER_R_OFF	LPC_GPIO1->FIOCLR = (1<<19);LPC_GPIO3->FIOCLR = (1<<26);
 
@@ -50,18 +53,16 @@
 #define SPORTS_ON		LPC_GPIO1->FIOSET = (1<<31);
 #define SPORTS_OFF		LPC_GPIO1->FIOCLR = (1<<31);
 
-#define DUTYBL			LPC_PWM1->MR6
-
 #define HAZARDS_ON		BLINKER_R_ON;BLINKER_L_ON;
 #define HAZARDS_OFF		BLINKER_R_OFF;BLINKER_L_OFF;
 
 /// INPUTS
 #define MECH_BRAKE		!(LPC_GPIO0->FIOPIN & (1<<25))
 
-#define RIGHT 			!(LPC_GPIO0->FIOPIN & (1<<0))
+#define LEFT 			!(LPC_GPIO0->FIOPIN & (1<<0))
 #define INCREMENT 		!(LPC_GPIO0->FIOPIN & (1<<1))
-#define LEFT 			!(LPC_GPIO1->FIOPIN & (1<<27))
-#define DECREMENT		!(LPC_GPIO1->FIOPIN & (1<<28))
+#define DECREMENT		!(LPC_GPIO1->FIOPIN & (1<<27))
+#define RIGHT			!(LPC_GPIO1->FIOPIN & (1<<28))
 #define SELECT 			!(LPC_GPIO1->FIOPIN & (1<<29))
 
 #define FORWARD 		!(LPC_GPIO0->FIOPIN & (1<<11))
@@ -72,8 +73,6 @@
 
 #define CC_ON			!(LPC_GPIO2->FIOPIN & (1<<12))
 #define CC_OFF			!(LPC_GPIO2->FIOPIN & (1<<13))
-
-#define ARMED			!(LPC_GPIO1->FIOPIN & (1<<8))
 
 #define LEFT_ON			!(LPC_GPIO1->FIOPIN & (1<<1))
 #define RIGHT_ON		!(LPC_GPIO1->FIOPIN & (1<<2))
@@ -92,6 +91,9 @@
 #define REGEN_RAMP_SPEED	30
 
 #define MAX_REGEN			200
+#define MAX_THR_DISP		600
+#define MAX_THR_LOWSPD		750
+#define LOWSPD_THRES		20.0
 
 #define ON		(1)
 #define OFF		(0)

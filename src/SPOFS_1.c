@@ -29,6 +29,7 @@
 
 // TODO: TEAM - limit throttle in display mode?
 // TODO: MAJOR - naming consistency
+// TODO: MAJOR - change I2C to handle multiple words in one write
 
 /////////////////////////////   CAN    ////////////////////////////////
 CAN_MSG MsgBuf_TX1, MsgBuf_TX2; /* TX and RX Buffers for CAN message */
@@ -87,7 +88,7 @@ void SysTick_Handler (void)
 	CLOCK.T_mS++;
 
 	// MinorSec: DIU CAN Heart Beat
-	if (CLOCK.T_mS % 10 == 0) // Every 100 mS send heart beat CAN packets
+	if((!(CLOCK.T_mS % 10)) && STATS.ARMED) // Every 100 mS send heart beat CAN packets
 	{
 		MsgBuf_TX1.Frame = 0x00080000;
 		MsgBuf_TX1.MsgID = ESC_CONTROL + 1;
@@ -102,7 +103,7 @@ void SysTick_Handler (void)
 		MsgBuf_TX1.DataB = 0x0;
 		CAN1_SendMessage( &MsgBuf_TX1 );
 
-		// TODO: TESTING -  Check if required
+		// TODO: TESTING - Check if required
 		/*
 		MsgBuf_TX1.Frame = 0x00080000;
 		MsgBuf_TX1.MsgID = ESC_CONTROL + 5;
@@ -110,6 +111,11 @@ void SysTick_Handler (void)
 		MsgBuf_TX1.DataB = 0x0;
 		CAN1_SendMessage( &MsgBuf_TX1 );
 		*/
+	}
+
+	if(STATS.BUZ_TIM)
+	{
+		if(!(--STATS.BUZ_TIM)){BUZZER_OFF;}
 	}
 
 	// MinorSec:  Time sensitive Calculations
@@ -406,6 +412,8 @@ void menu_drive (void)
 		THR_POS = (1500 - ADC_A);
 		THR_POS = (THR_POS * 9)/10;
 		if(THR_POS < 0){THR_POS = 0;}
+		if(ESC.Velocity_KMH < LOWSPD_THRES && THR_POS > MAX_THR_LOWSPD){THR_POS = MAX_THR_LOWSPD;}
+		if(!menu.driver && THR_POS > MAX_THR_DISP){THR_POS = MAX_THR_DISP;}
 		if(THR_POS > 1000){THR_POS = 1000;}
 	}
 
@@ -420,19 +428,19 @@ void menu_drive (void)
 	if(RGN_POS){STATS.CR_ACT = OFF;}
 
 	// MinorSec: DRIVE LOGIC
-	if (!MECH_BRAKE && (FORWARD || REVERSE)){
+	if(!MECH_BRAKE && (FORWARD || REVERSE)){
 		if(STATS.CR_ACT)																				{DRIVE.Current = 1.0; DRIVE.Speed_RPM = STATS.CRUISE_SPEED / ((60 * 3.14 * WHEEL_D_M) / 1000.0);}
-		else if(!THR_POS && !RGN_POS)																	{DRIVE.Speed_RPM = 0; DRIVE.Current = 0;}
-		else if(RGN_POS && DRIVE.Current > 0)															{DRIVE.Current = 0;}
-		else if(RGN_POS && ((DRIVE.Current * 1000) < RGN_POS))											{DRIVE.Speed_RPM = 0; 		DRIVE.Current += (REGEN_RAMP_SPEED / 1000.0);}
+		else if(!THR_POS && !RGN_POS)																	{DRIVE.Speed_RPM = 0; 		DRIVE.Current = 0;}
+		else if(RGN_POS && DRIVE.Current > 0)															{							DRIVE.Current = 0;}
+		else if(RGN_POS && ((DRIVE.Current * 1000) < RGN_POS))											{DRIVE.Speed_RPM = 0; 		DRIVE.Current -= (REGEN_RAMP_SPEED / 1000.0);}
 		else if(RGN_POS)																				{DRIVE.Speed_RPM = 0; 		DRIVE.Current = (RGN_POS / 2);}
-		else if(THR_POS && DRIVE.Current < 0)															{DRIVE.Current = 0;}
+		else if(THR_POS && DRIVE.Current < 0)															{							DRIVE.Current = 0;}
 		else if(FORWARD && ESC.Velocity_KMH > -5.0 && !RGN_POS && ((DRIVE.Current * 1000) < THR_POS))	{DRIVE.Speed_RPM = 1500; 	DRIVE.Current += (STATS.RAMP_SPEED / 1000.0);}
 		else if(FORWARD && ESC.Velocity_KMH > -5.0 && !RGN_POS)											{DRIVE.Speed_RPM = 1500; 	DRIVE.Current = (THR_POS / 1000.0);}
 		else if(REVERSE && ESC.Velocity_KMH < 1.0 && !RGN_POS && ((DRIVE.Current * 1000) < THR_POS))	{DRIVE.Speed_RPM = -200; 	DRIVE.Current += (STATS.RAMP_SPEED / 1000.0);}
 		else if(REVERSE && ESC.Velocity_KMH < 1.0 && !RGN_POS)											{DRIVE.Speed_RPM = -200; 	DRIVE.Current = (THR_POS / 1000.0);}
 		else{DRIVE.Speed_RPM = 0; DRIVE.Current = 0;}}
-	else{DRIVE.Speed_RPM = 0; DRIVE.Current = 0;}
+	else{DRIVE.Speed_RPM = 0; DRIVE.Current = 0;STATS.CR_ACT = 0;}
 }
 
 /******************************************************************************
@@ -467,8 +475,8 @@ void menu_lights (void)
 	if((SWITCH_IO & 0x10) && (CLOCK.T_mS > 25 && CLOCK.T_mS < 75)){BLINKER_R_ON}
 	else{BLINKER_R_OFF}
 
-	if(SWITCH_IO & 0x4)	{SPORTS_ON;ECO_OFF}
-	else				{SPORTS_OFF;ECO_ON}
+	if(SWITCH_IO & 0x4)	{SPORTS_ON;ECO_OFF;}
+	else				{SPORTS_OFF;ECO_ON;}
 
 	if(STATS.FAULT == 1){FAULT_ON}
 	else if(STATS.FAULT == 2 && (CLOCK.T_mS > 25 && CLOCK.T_mS < 75)){FAULT_ON}
@@ -500,30 +508,36 @@ void menu_can_handler (void)
 		if((MsgBuf_RX1.MsgID == DASH_RQST) && (MsgBuf_RX1.DataA == 0x4C4C494B) && (MsgBuf_RX1.DataB == 0x45565244)) // Data = KILLDRVE
 		{
 			lcd_clear();
-			char buffer[20];
 
 			if(menu.driver == 3)
 			{
+				char rot1[20], rot2[20];
 				_lcd_putTitle("-GOT DICK-");
 				lcd_putstring(1,0, EROW);
-				sprintf(buffer, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", 0x00, 0x02, 0x04, 0x04, 0x05, 0x00, 0x02, 0x04, 0x04, 0x05, 0x00, 0x02, 0x04, 0x04, 0x05, 0x00, 0x02, 0x04, 0x04, 0x05);
-				lcd_putstring(2,0, buffer);
-				sprintf(buffer, "%c%c   %c%c   %c%c   %c%c   ", 0x01, 0x03, 0x01, 0x03, 0x01, 0x03, 0x01, 0x03);
-				lcd_putstring(3,0, buffer);
+				sprintf(rot1, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", 0x00, 0x02, 0x04, 0x04, 0x05, 0x00, 0x02, 0x04, 0x04, 0x05, 0x00, 0x02, 0x04, 0x04, 0x05, 0x00, 0x02, 0x04, 0x04, 0x05);
+				lcd_putstring_custom(2,0, rot1, 20); // does not catch nulls
+				sprintf(rot2, "%c%c   %c%c   %c%c   %c%c   ", 0x01, 0x03, 0x01, 0x03, 0x01, 0x03, 0x01, 0x03);
+				lcd_putstring(3,0, rot2);
 			}
 			else
 			{
 				_lcd_putTitle("-KILLDRVE-");
-				sprintf(buffer, "--   KILL DRIVE   --");
-				lcd_putstring(1,0, buffer);
-				lcd_putstring(2,0, buffer);
-				lcd_putstring(3,0, buffer);
+				lcd_putstring(1,0, "--   KILL DRIVE   --");
+				lcd_putstring(2,0, "--   KILL DRIVE   --");
+				lcd_putstring(3,0, "--   KILL DRIVE   --");
 			}
 
 			while(FORWARD || REVERSE)
 			{
-				buzzer(1000);
-				delayMs(1,500);
+				if(!(CLOCK.T_mS % 20) && menu.driver == 3)
+				{
+					_buffer_rotate(rot1, 20, 1);
+					_buffer_rotate(rot2, 20, 1);
+					lcd_putstring_custom(2,0, rot1, 20);
+					lcd_putstring(3,0, rot2);
+				}
+				buzzer(50);
+				delayMs(1,1000);
 			}
 			lcd_clear();
 		}
@@ -532,9 +546,7 @@ void menu_can_handler (void)
 			if(ESC.ERROR == 0x2)
 			{
 				esc_reset();
-				buzzer(100);
-				delayMs(1,100);
-				buzzer(100);
+				buzzer(50);
 				NEUTRAL_OFF;REVERSE_OFF;DRIVE_OFF;REGEN_OFF;
 			}
 		}
@@ -652,7 +664,7 @@ void storeVariables (void)
 		EE_Write(AddressODOTR, conv_float_uint(STATS.TR_ODOMETER));
 		delayMs(1,3);
 	}
-	else // TODO: MAJOR - change I2C to handle multiple words in one write
+	else
 	{
 		EE_Write(AddressBMUWHR, conv_float_uint(BMU.WattHrs));
 		delayMs(1,3);
@@ -757,7 +769,7 @@ void I2C_Write (uint16_t _EEadd, uint8_t data0, uint8_t data1, uint8_t data2, ui
 	I2CMasterBuffer[PORT_USED][6] = data3;
 	I2CEngine( PORT_USED );
 
-	delayMs(1,10);
+	delayMs(1,2);
 }
 
 /******************************************************************************
@@ -807,7 +819,7 @@ void init_GPIO (void)
 	 * 		0 - IN - RIGHT_ON
 	 * 		1 - IN - LEFT_ON
 	 * 		4 - IN - Power Status
-	 * 		8 - IN - Armed Status
+	 * 		8 - OUT - Armed Status
 	 * 	PINSEL3:
 	 * 		19 - OUT - Blinker R
 	 * 		20 - OUT - Blinker L
@@ -822,8 +834,8 @@ void init_GPIO (void)
 	 * 		30 - OUT - ECO LED
 	 * 		31 - OUT - SPORTS LED
 	 */
-	LPC_GPIO1->FIODIR = (1<<19)|(1<<20)|(1<<21)|(1<<23)|(1<<24)|(1<<25)|(1<<26)|(1<<30)|(1<<31);
-	LPC_GPIO1->FIOCLR = (1<<19)|(1<<20)|(1<<21)|(1<<23)|(1<<24)|(1<<25)|(1<<26)|(1<<30)|(1<<31);
+	LPC_GPIO1->FIODIR = (1<<8)|(1<<19)|(1<<20)|(1<<21)|(1<<23)|(1<<24)|(1<<25)|(1<<26)|(1<<30)|(1<<31);
+	LPC_GPIO1->FIOCLR = (1<<8)|(1<<19)|(1<<20)|(1<<21)|(1<<23)|(1<<24)|(1<<25)|(1<<26)|(1<<30)|(1<<31);
 
 	/*
 	 * GPIO2:
@@ -855,16 +867,17 @@ void init_GPIO (void)
 **
 ** Description:			Turns buzzer on for set amount of time
 **
-** Parameters:			Time to activate buzzer
+** Parameters:			Number of 10mS ticks to sound buzzer
 ** Returned value:		None
 **
 ******************************************************************************/
 void buzzer (uint32_t val)
 {
 	if(STATS.BUZZER)
-	{BUZZER_ON;}
-	delayMs(1,val);
-	BUZZER_OFF;
+	{
+		STATS.BUZ_TIM = val;
+		BUZZER_ON;
+	}
 }
 
 /******************************************************************************

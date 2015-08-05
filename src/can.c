@@ -67,8 +67,10 @@ void CAN_ISR_Rx1( void )
 #endif
 	break;
 	case ESC_BASE + 2:
-	ESC.Bus_V = conv_uint_float(MsgBuf_RX1.DataA);
-	ESC.Bus_I = conv_uint_float(MsgBuf_RX1.DataB);
+	ESC.Bus_V = iirFILTER(ESC.Bus_V, conv_uint_float(MsgBuf_RX1.DataA), IIR_GAIN_ELECTRICAL);
+	ESC.Bus_I = iirFILTER(ESC.Bus_I, conv_uint_float(MsgBuf_RX1.DataB), IIR_GAIN_ELECTRICAL);
+	if(ESC.Bus_V > 80 && (ESC.Bus_V > BMU.Battery_V / 1111)){STATS.ARMED = 1;HV_ON;}
+	else{STATS.ARMED = 0;HV_OFF;}
 	break;
 	case ESC_BASE + 3:
 #if _MC_VELOCITY == 1
@@ -231,7 +233,7 @@ void CAN_ISR_Rx1( void )
 #endif
 	break;
 	case BMU_BASE + BMU_INFO + 6:
-	BMU.Battery_V = MsgBuf_RX1.DataB / 1000; // Packet is in mV and mA
+	BMU.Battery_V = iirFILTER(MsgBuf_RX1.DataB / 1000, BMU.Battery_V, IIR_GAIN_ELECTRICAL); // Packet is in mV and mA
 	BMU.Battery_I = iirFILTER(MsgBuf_RX1.DataA / 1000, BMU.Battery_I, IIR_GAIN_ELECTRICAL);
 	break;
 	case BMU_BASE + BMU_INFO + 7:

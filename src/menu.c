@@ -71,7 +71,6 @@ void lcd_display_driver (void)
 	lcd_putstring(1,0, "   DISPLAY    TEST  ");
 	lcd_putstring(2,0, "   RACE 1     RACE 2");
 
-
 	sprintf(sel, ">>");
 	sprintf(blank, "  ");
 
@@ -82,27 +81,27 @@ void lcd_display_driver (void)
 		default:
 		case 0:
 			lcd_putstring(1,0, sel);
-			lcd_putstring(1,10, blank);
+			lcd_putstring(1,11, blank);
 			lcd_putstring(2,0, blank);
-			lcd_putstring(2,10, blank);
+			lcd_putstring(2,11, blank);
 			break;
 		case 1:
 			lcd_putstring(1,0, blank);
-			lcd_putstring(1,10, sel);
+			lcd_putstring(1,11, sel);
 			lcd_putstring(2,0, blank);
-			lcd_putstring(2,10, blank);
+			lcd_putstring(2,11, blank);
 			break;
 		case 2:
 			lcd_putstring(1,0, blank);
-			lcd_putstring(1,10, blank);
+			lcd_putstring(1,11, blank);
 			lcd_putstring(2,0, sel);
-			lcd_putstring(2,10, blank);
+			lcd_putstring(2,11, blank);
 			break;
 		case 3:
 			lcd_putstring(1,0, blank);
-			lcd_putstring(1,10, blank);
+			lcd_putstring(1,11, blank);
 			lcd_putstring(2,0, blank);
-			lcd_putstring(2,10, sel);
+			lcd_putstring(2,11, sel);
 			break;
 		}
 
@@ -113,12 +112,12 @@ void lcd_display_driver (void)
 		}
 		else if(INCREMENT || DECREMENT)
 		{
-			menu.submenu_pos = (menu.submenu_pos + 2) % 4;
+			menu.submenu_pos = (menu.submenu_pos + 2) % 4;	// (pos + width) % total
 			delayMs(1,500);
 		}
 		else if(LEFT || RIGHT)
 		{
-			menu.submenu_pos = ((menu.submenu_pos / 2) * 2) + ((menu.submenu_pos + 1) % 2);
+			menu.submenu_pos = ((menu.submenu_pos / 2) * 2) + ((menu.submenu_pos + 1) % 2);	// ((pos / width) * width) + ((pos + 1) % width) -- Get row number, get item at start of row number, get next width looping on width
 			delayMs(1,500);
 		}
 	}
@@ -139,14 +138,14 @@ void lcd_display_intro (void)
 	lcd_putstring(1,0, EROW);
 	lcd_putstring(2,0, "   NEWCAR Driver    ");
 	lcd_putstring(3,0, "   Interface v2.0   ");
-	delayMs(1,1600);
+	delayMs(1,3600);
 
 	lcd_putstring(0,0, "**  UWS WSC 2015  **");
 	lcd_putstring(1,0, EROW);
 	lcd_putstring(2,0, "    BUZZER Test..   ");
 	lcd_putstring(3,0, EROW);
 	BUZZER_ON
-	delayMs(1,100);
+	delayMs(1,1000);
 	BUZZER_OFF
 
 	lcd_clear();
@@ -169,8 +168,8 @@ void lcd_display_info (void)
 {
 	_lcd_putTitle("-INFO-");
 	lcd_putstring(1,0, "NEWCAR DashBOARD2.0 ");
-	lcd_putstring(2,0, "HW Version: 2.0a    ");
-	lcd_putstring(3,0, "SW Version: 2.0a    ");
+	lcd_putstring(2,0, "HW Version: 2.0     ");
+	lcd_putstring(3,0, "SW Version: 2.0.1   ");
 }
 
 /******************************************************************************
@@ -218,14 +217,8 @@ void lcd_display_home (void)
 	if(STATS.DRIVE_MODE == SPORTS)	{lcd_putstring(1,0, "DRIVE MODE:  SPORTS ");}
 	else							{lcd_putstring(1,0, "DRIVE MODE: ECONOMY ");}
 
-	// TODO: TEAM - Unlikely to get throttle % from controller, can get absolute current.
-	// May be able to hard code current cap for controller and divide for %
-	/*if(STATS.CR_ACT)
-	{
-		if (CRUISE.CO >= 1000){sprintf(buffer, "CRUISE FW: %3d.%d%%   ", PWMA/10,PWMA%10);}
-		else{sprintf(buffer, "CRUISE RG: %3d.%d%%   ", PWMC/10,PWMC%10);}
-	}
-	else */if(FORWARD && !RGN_POS)	{sprintf(buffer, "DRIVE:     %3d.%d%%   ", THR_POS/10,THR_POS%10);}
+	if(STATS.CR_ACT)				{sprintf(buffer, "CRUISE:    %3d.%d%%   ", ESC.Bus_I * 1.5385, (ESC.Bus_I * 15.385) % 10);} // hard coded to 65A = 100% (1 / 0.65)
+	else if(FORWARD && !RGN_POS)	{sprintf(buffer, "DRIVE:     %3d.%d%%   ", THR_POS/10,THR_POS%10);}
 	else if(REVERSE && !RGN_POS)	{sprintf(buffer, "REVERSE:   %3d.%d%%   ", THR_POS/10,THR_POS%10);}
 	else if(RGN_POS)				{sprintf(buffer, "REGEN:     %3d.%d%%   ", RGN_POS/10,RGN_POS%10);}
 	else							{sprintf(buffer, "NEUTRAL:   %3d.%d%%   ", THR_POS/10,THR_POS%10);}
@@ -237,7 +230,7 @@ void lcd_display_home (void)
 	else if(MPPT2.UNDV || MPPT2.OVT)				{sprintf(buffer, "MPPT2  FAULT        ");}
 	else if(BMU.Status & 0x00001FBF)				{sprintf(buffer, "BMU  FAULT          ");}
 	else if(!(MPPT1.Connected && MPPT2.Connected))	{sprintf(buffer, "NO ARRAY            ");}
-	else											{int len = sprintf(buffer, "ARRAY: %4lu W", MPPT2.Watts+MPPT1.Watts);_lcd_padding(3, len, 20 - len);}
+	else											{int len = sprintf(buffer, "POWER: %4.1f W", ESC.Watts);_lcd_padding(3, len, 20 - len);}
 	lcd_putstring(3,0, buffer);
 }
 
@@ -262,7 +255,7 @@ void lcd_display_drive (void)
 
 	if(!RGN_POS)
 	{
-		sprintf(buffer, "OUTPUT:       %3.1f%%", DRIVE.Current*100);
+		sprintf(buffer, "OUTPUT:       %5.1f%%", DRIVE.Current*100);
 		lcd_putstring(2,0, buffer);
 
 		sprintf(buffer, "THROTTLE:     %3d.%d%%", THR_POS/10,THR_POS%10);
@@ -270,7 +263,7 @@ void lcd_display_drive (void)
 	}
 	else
 	{
-		sprintf(buffer, "OUTPUT:       %3.1f%%", DRIVE.Current*100);
+		sprintf(buffer, "OUTPUT:       %5.1f%%", DRIVE.Current*100);
 		lcd_putstring(2,0, buffer);
 
 		sprintf(buffer, "REGEN:        %3d.%d%%", RGN_POS/10,RGN_POS%10);
@@ -555,7 +548,9 @@ void lcd_display_motor (void)
 		}
 		break;
 	}
-	lcd_putstring(3,0, EROW);
+	len = sprintf(buffer, "ERROR: %d", ESC.ERROR);
+	lcd_putstring(3,0, buffer);
+	if(len<20){_lcd_padding(3, len, 20 - len);}
 
 	if(INCREMENT)		{menu_inc(&menu.submenu_pos, menu.submenu_items);delayMs(1,500);}
 	else if(DECREMENT)	{menu_dec(&menu.submenu_pos, menu.submenu_items);delayMs(1,500);}
@@ -657,7 +652,7 @@ void lcd_display_options (void)
 	_lcd_putTitle("-OPTIONS-");
 	lcd_putstring(1,0, EROW);
 
-	if (menu.selected || (CLOCK.T_S%2))
+	if (menu.selected || (CLOCK.T_mS > 25 && CLOCK.T_mS < 75))
 	{
 		switch(menu.submenu_pos)
 		{
@@ -665,29 +660,28 @@ void lcd_display_options (void)
 			menu.submenu_pos = 0;
 			/* no break */
 		case 0:
-			if(STATS.BUZZER){lcd_putstring(2,0, ">> BUZZER:     ON   ");}
-			else{lcd_putstring(2,0, ">> BUZZER:    OFF   ");}
+			if(STATS.BUZZER){lcd_putstring(2,0, ">> BUZZER: ON       ");}
+			else{lcd_putstring(2,0, ">> BUZZER: OFF      ");}
 			len = sprintf(buffer, "   DRIVER: %d", menu.driver);
 			break;
 		case 1:
-			if(STATS.BUZZER){lcd_putstring(2,0, "   BUZZER:     ON   ");}
-			else{lcd_putstring(2,0, "   BUZZER:    OFF   ");}
+			if(STATS.BUZZER){lcd_putstring(2,0, "   BUZZER: ON       ");}
+			else{lcd_putstring(2,0, "   BUZZER: OFF      ");}
 			len = sprintf(buffer, ">> DRIVER: %d", menu.driver);
-			lcd_putstring(3,0, buffer);
 			break;
 		}
 	}
 	else
 	{
-		if(STATS.BUZZER){lcd_putstring(2,0, "   BUZZER:     ON   ");}
-		else{lcd_putstring(2,0, "   BUZZER:    OFF   ");}
+		if(STATS.BUZZER){lcd_putstring(2,0, "   BUZZER: ON       ");}
+		else{lcd_putstring(2,0, "   BUZZER: OFF      ");}
 		len = sprintf(buffer, "   DRIVER: %d", menu.driver);
-		lcd_putstring(3,0, buffer);
 	}
+	lcd_putstring(3,0, buffer);
 	_lcd_padding(3,len, 20 - len);
 
 	/////////////////////////////   ACTIONS   //////////////////////////////
-	if(menu.selected)
+	if(menu.selected & 0x1) // retry basic check with new board
 	{
 		if(SELECT)
 		{
@@ -1034,6 +1028,27 @@ void _lcd_padding (int row, int pos, int len)
 }
 
 /******************************************************************************
+** Function name:		_buffer_rotate
+**
+** Description:			Rotates characters in buffer by amount in dir
+**
+** Parameters:			1. Address of buffer/string
+** 						2. Length of buffer
+** 						3. Direction to rotate
+** Returned value:		None
+**
+******************************************************************************/
+void _buffer_rotate (char *_buf, int _len, int _dir) // TODO: come back to
+{
+	char _last = *(_buf + len - 1);
+	char *_cur = &buf + len - 1;
+
+	while(_cur != _buf){*_cur = *(_cur-- - 1);}
+
+	*_buf = _last;
+}
+
+/******************************************************************************
 ** Function name:		menu_inc
 **
 ** Description:			Increments menu selection by 1. Will loop to first item
@@ -1080,37 +1095,35 @@ void menu_init (void)
 	default:
 	case 0: // DISPLAY
 		menu.menu_items = 11;
-		menu.menus[0] = lcd_display_info;
-		menu.menus[1] = lcd_display_home;
-		menu.menus[2] = lcd_display_drive;
+		menu.menus[0] = lcd_display_home;
+		menu.menus[1] = lcd_display_drive;
+		menu.menus[2] = lcd_display_MPPT1;
+		menu.menus[3] = lcd_display_MPPT2;
+		menu.menus[4] = lcd_display_MPPTPower;
+		menu.menus[5] = lcd_display_motor;
+		menu.menus[6] = lcd_display_options;
+		menu.menus[7] = lcd_display_peaks;
+		menu.menus[8] = lcd_display_runtime;
+		menu.menus[9] = lcd_display_odometer;
+		menu.menus[10] = lcd_display_info;
+		break;
+	case 1: // TEST
+		menu.menu_items = 15;
+		menu.menus[0] = lcd_display_home;
+		menu.menus[1] = lcd_display_drive;
+		menu.menus[2] = lcd_display_cruise;
 		menu.menus[3] = lcd_display_MPPT1;
 		menu.menus[4] = lcd_display_MPPT2;
 		menu.menus[5] = lcd_display_MPPTPower;
 		menu.menus[6] = lcd_display_motor;
-		menu.menus[7] = lcd_display_options;
-		menu.menus[8] = lcd_display_peaks;
-		menu.menus[9] = lcd_display_runtime;
-		menu.menus[10] = lcd_display_odometer;
-		menu.menu_pos = 1; // Initial menu screen
-		break;
-	case 1: // TEST
-		menu.menu_items = 15;
-		menu.menus[0] = lcd_display_info;
-		menu.menus[1] = lcd_display_escBus;
-		menu.menus[2] = lcd_display_home;
-		menu.menus[3] = lcd_display_drive;
-		menu.menus[4] = lcd_display_cruise;
-		menu.menus[5] = lcd_display_MPPT1;
-		menu.menus[6] = lcd_display_MPPT2;
-		menu.menus[7] = lcd_display_MPPTPower;
-		menu.menus[8] = lcd_display_motor;
-		menu.menus[9] = lcd_display_debug;
-		menu.menus[10] = lcd_display_errors;
-		menu.menus[11] = lcd_display_options;
-		menu.menus[12] = lcd_display_peaks;
-		menu.menus[13] = lcd_display_runtime;
-		menu.menus[14] = lcd_display_odometer;
-		menu.menu_pos = 2; // Initial menu screen
+		menu.menus[7] = lcd_display_debug;
+		menu.menus[8] = lcd_display_errors;
+		menu.menus[9] = lcd_display_options;
+		menu.menus[10] = lcd_display_peaks;
+		menu.menus[11] = lcd_display_runtime;
+		menu.menus[12] = lcd_display_odometer;
+		menu.menus[13] = lcd_display_info;
+		menu.menus[14] = lcd_display_escBus;
 		break;
 	case 2: // RACE 1
 		menu.menu_items = 7;
@@ -1121,7 +1134,6 @@ void menu_init (void)
 		menu.menus[4] = lcd_display_options;
 		menu.menus[5] = lcd_display_runtime;
 		menu.menus[6] = lcd_display_odometer;
-		menu.menu_pos = 0; // Initial menu screen
 		break;
 	case 3: // RACE 2
 		menu.menu_items = 7;
@@ -1132,10 +1144,10 @@ void menu_init (void)
 		menu.menus[4] = lcd_display_options;
 		menu.menus[5] = lcd_display_runtime;
 		menu.menus[6] = lcd_display_odometer;
-		menu.menu_pos = 0; // Initial menu screen
 		break;
 	}
 
 	menu.selected = 0;
 	menu.submenu_pos = 0;
+	menu.menu_pos = 0; // Initial menu screen
 }

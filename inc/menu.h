@@ -58,6 +58,7 @@ void lcd_display_COMMS(void);
 
 void _lcd_putTitle(char*);
 void _lcd_padding(int row, int pos, int len);
+void _buffer_rotate (char *_buf, int _len, int _dir);
 
 void menu_inc(uint8_t *_pos, uint8_t _total);
 void menu_dec(uint8_t *_pos, uint8_t _total);
