@@ -90,6 +90,8 @@
 #define SPORTS_RAMP_SPEED	30
 #define REGEN_RAMP_SPEED	30
 
+#define MAX_ESC_CUR			65	// Amps
+
 #define MAX_REGEN			200
 #define MAX_THR_DISP		600
 #define MAX_THR_LOWSPD		750

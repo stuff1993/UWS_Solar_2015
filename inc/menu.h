@@ -27,6 +27,11 @@ struct MENUS
 	uint8_t submenu_items;
 	uint8_t submenu_pos;
 	FLAG(selected)
+	FLAG(dec_dwn)
+	FLAG(inc_dwn)
+	FLAG(left_dwn)
+	FLAG(right_dwn)
+	FLAG(sel_dwn)
 }menu;
 
 // startup screens
@@ -58,7 +63,8 @@ void lcd_display_COMMS(void);
 
 void _lcd_putTitle(char*);
 void _lcd_padding(int row, int pos, int len);
-void _buffer_rotate (char *_buf, int _len, int _dir);
+void _buffer_rotate_right(char *_buf, int _len);
+void _buffer_rotate_left(char *_buf, int _len);
 
 void menu_inc(uint8_t *_pos, uint8_t _total);
 void menu_dec(uint8_t *_pos, uint8_t _total);

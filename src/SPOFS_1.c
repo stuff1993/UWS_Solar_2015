@@ -27,7 +27,6 @@
 #include "menu.h"
 #include "can.h"
 
-// TODO: TEAM - limit throttle in display mode?
 // TODO: MAJOR - naming consistency
 // TODO: MAJOR - change I2C to handle multiple words in one write
 
@@ -529,10 +528,10 @@ void menu_can_handler (void)
 
 			while(FORWARD || REVERSE)
 			{
-				if(!(CLOCK.T_mS % 20) && menu.driver == 3)
+				if(menu.driver == 3)
 				{
-					_buffer_rotate(rot1, 20, 1);
-					_buffer_rotate(rot2, 20, 1);
+					_buffer_rotate_right(rot1, 20);
+					_buffer_rotate_right(rot2, 20);
 					lcd_putstring_custom(2,0, rot1, 20);
 					lcd_putstring(3,0, rot2);
 				}

@@ -105,20 +105,36 @@ void lcd_display_driver (void)
 			break;
 		}
 
-		if(SELECT)
+		if(SELECT || menu.sel_dwn)
 		{
-			menu.driver = menu.submenu_pos;
-			delayMs(1,500);
+			if(!SELECT && menu.sel_dwn)
+			{
+				menu.sel_dwn = 0;
+				menu.driver = menu.submenu_pos;
+			}
+			else{menu.sel_dwn = 1;}
 		}
-		else if(INCREMENT || DECREMENT)
+		else if(INCREMENT || DECREMENT || menu.inc_dwn || menu.dec_dwn)
 		{
-			menu.submenu_pos = (menu.submenu_pos + 2) % 4;	// (pos + width) % total
-			delayMs(1,500);
+			if((!INCREMENT && menu.inc_dwn) || (!DECREMENT && menu.dec_dwn))
+			{
+				menu.inc_dwn = 0;
+				menu.dec_dwn = 0;
+				menu.submenu_pos = (menu.submenu_pos + 2) % 4;	// (pos + width) % total
+			}
+			else if(INCREMENT){menu.inc_dwn = 1;}
+			else{menu.dec_dwn = 1;}
 		}
-		else if(LEFT || RIGHT)
+		else if(LEFT || RIGHT || menu.left_dwn || menu.right_dwn)
 		{
-			menu.submenu_pos = ((menu.submenu_pos / 2) * 2) + ((menu.submenu_pos + 1) % 2);	// ((pos / width) * width) + ((pos + 1) % width) -- Get row number, get item at start of row number, get next width looping on width
-			delayMs(1,500);
+			if((!LEFT && menu.left_dwn) || (!RIGHT && menu.right_dwn))
+			{
+				menu.left_dwn = 0;
+				menu.right_dwn = 0;
+				menu.submenu_pos = ((menu.submenu_pos / 2) * 2) + ((menu.submenu_pos + 1) % 2);	// ((pos / width) * width) + ((pos + 1) % width) -- Get row number, get item at start of row number, get next width looping on width
+			}
+			else if(LEFT){menu.left_dwn = 1;}
+			else{menu.right_dwn = 1;}
 		}
 	}
 }
@@ -138,7 +154,7 @@ void lcd_display_intro (void)
 	lcd_putstring(1,0, EROW);
 	lcd_putstring(2,0, "   NEWCAR Driver    ");
 	lcd_putstring(3,0, "   Interface v2.0   ");
-	delayMs(1,3600);
+	delayMs(1,3500);
 
 	lcd_putstring(0,0, "**  UWS WSC 2015  **");
 	lcd_putstring(1,0, EROW);
@@ -217,7 +233,7 @@ void lcd_display_home (void)
 	if(STATS.DRIVE_MODE == SPORTS)	{lcd_putstring(1,0, "DRIVE MODE:  SPORTS ");}
 	else							{lcd_putstring(1,0, "DRIVE MODE: ECONOMY ");}
 
-	if(STATS.CR_ACT)				{sprintf(buffer, "CRUISE:    %3d.%d%%   ", ESC.Bus_I * 1.5385, (ESC.Bus_I * 15.385) % 10);} // hard coded to 65A = 100% (1 / 0.65)
+	if(STATS.CR_ACT)				{sprintf(buffer, "CRUISE:    %3d.%d%%   ", ESC.Bus_I * (100 / MAX_ESC_CUR), (ESC.Bus_I * (1000 / MAX_ESC_CUR)) % 10);} // hard coded to 65A = 100% (100 / 65)
 	else if(FORWARD && !RGN_POS)	{sprintf(buffer, "DRIVE:     %3d.%d%%   ", THR_POS/10,THR_POS%10);}
 	else if(REVERSE && !RGN_POS)	{sprintf(buffer, "REVERSE:   %3d.%d%%   ", THR_POS/10,THR_POS%10);}
 	else if(RGN_POS)				{sprintf(buffer, "REGEN:     %3d.%d%%   ", RGN_POS/10,RGN_POS%10);}
@@ -295,7 +311,8 @@ void lcd_display_cruise (void)
 			sprintf(buffer, " SET: %3.0f  SPD: %3.0f ", STATS.CRUISE_SPEED, ESC.Velocity_KMH);
 			lcd_putstring(2,0, buffer);
 
-			lcd_putstring(3,0, EROW);
+			sprintf(buffer, " THR: %3d%%  ABS: %3.0fA", ESC.Bus_I * (100 / MAX_ESC_CUR), ESC.Bus_I);
+			lcd_putstring(3,0, buffer);
 
 			// Button presses
 			if (SELECT)										{STATS.CR_ACT = OFF;delayMs(1,500);}
@@ -596,27 +613,20 @@ void lcd_display_debug (void)
 ** Returned value:		None
 **
 ******************************************************************************/
-void lcd_display_errors (void) // TODO: TEAM - add to motor menu or add other errors?
+void lcd_display_errors (void)
 {
 	char buffer[20];
 
-	_lcd_putTitle("-ESC FALT-");
-	lcd_putstring(1,0, EROW);
+	_lcd_putTitle("-FAULTS-");
 
-	if(ESC.ERROR)
-	{
-		int len;
-		lcd_putstring(2,0, "ESC FAULT           ");
+	sprintf(buffer, "ESC: %d", ESC.ERROR);
+	lcd_putstring(1,0, buffer);
 
-		len = sprintf(buffer, "CODE: %d", ESC.ERROR);
-		lcd_putstring(3,0, buffer);
-		if(len<20){_lcd_padding(3, len, 20 - len);}
-	}
-	else
-	{
-		lcd_putstring(2,0, "NO FAULTS           ");
-		lcd_putstring(3,0, EROW);
-	}
+	sprintf(buffer, "MPPT: %#5x", ((MPPT2.Connected ? 1 : 0) << 9)|((MPPT1.Connected ? 1 : 0) << 8)|(MPPT1.BVLR << 7)|(MPPT1.OVT << 6)|(MPPT1.NOC << 5)|(MPPT1.UNDV << 4)|(MPPT2.BVLR << 3)|(MPPT2.OVT << 2)|(MPPT2.NOC << 1)|(MPPT2.UNDV));
+	lcd_putstring(2,0, buffer);
+
+	sprintf(buffer, "BMU: %d", BMU.Status);
+	lcd_putstring(3,0, buffer);
 
 	if(SELECT && ESC.ERROR)	// MOTOR CONTROLLER ERROR RESET	GOES BELOW	--	NOT YET TESTED
 	{
@@ -628,8 +638,9 @@ void lcd_display_errors (void) // TODO: TEAM - add to motor menu or add other er
 		if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
 		{
 			esc_reset();
-			buzzer(500);
+			buzzer(50);
 		}
+		delayMs(1,1000);
 	}
 }
 
@@ -992,11 +1003,9 @@ void _lcd_putTitle (char *_title)
 	spdadd = spd;
 
 	sprintf(buffer, _title);
-	while ((*(++bufadd) != '\0') && (bufadd < buffer + 10))
-	{;}
+	while ((*(++bufadd) != '\0') && (bufadd < buffer + 10)){;}
 
-	for (;bufadd != buffer + 10; bufadd++)
-	{*bufadd = ' ';}
+	for (;bufadd != buffer + 10; bufadd++){*bufadd = ' ';}
 
 	sprintf(spd, " %5.1fkmh ", ESC.Velocity_KMH);
 
@@ -1028,24 +1037,39 @@ void _lcd_padding (int row, int pos, int len)
 }
 
 /******************************************************************************
-** Function name:		_buffer_rotate
+** Function name:		_buffer_rotate_right
 **
-** Description:			Rotates characters in buffer by amount in dir
+** Description:			Rotates characters in buffer to the right
 **
 ** Parameters:			1. Address of buffer/string
 ** 						2. Length of buffer
-** 						3. Direction to rotate
 ** Returned value:		None
 **
 ******************************************************************************/
-void _buffer_rotate (char *_buf, int _len, int _dir) // TODO: come back to
+void _buffer_rotate_right (char *_buf, int _len)
 {
-	char _last = *(_buf + len - 1);
-	char *_cur = &buf + len - 1;
-
+	char _last = *(_buf + _len - 1);
+	char* _cur = (_buf + _len - 1);
 	while(_cur != _buf){*_cur = *(_cur-- - 1);}
-
 	*_buf = _last;
+}
+
+/******************************************************************************
+** Function name:		_buffer_rotate_left
+**
+** Description:			Rotates characters in buffer to the left
+**
+** Parameters:			1. Address of buffer/string
+** 						2. Length of buffer
+** Returned value:		None
+**
+******************************************************************************/
+void _buffer_rotate_left (char *_buf, int _len)
+{
+	char _first = *_buf;
+	char* _cur = _buf;
+	while(_cur != (_buf + len - 1)){*_cur = *(_cur++ + 1);}
+	*(_buf + len - 1) = _first;
 }
 
 /******************************************************************************
