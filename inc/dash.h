@@ -16,6 +16,20 @@
 
 #define WHEEL_D_M (0.557) // metres
 
+#define ECONOMY_RAMP_SPEED	5
+#define SPORTS_RAMP_SPEED	30
+#define REGEN_RAMP_SPEED	30
+
+#define MAX_ESC_CUR			65	// Amps
+
+#define MAX_REGEN			200
+#define MAX_THR_DISP		600
+#define MAX_THR_LOWSPD		750
+#define LOWSPD_THRES		20.0
+
+#define IIR_GAIN_ELECTRICAL	16
+#define IIR_GAIN_THERMAL	8
+
 /// OUTPUTS
 #define BUZZER_ON		LPC_GPIO0->FIOSET = (1<<3);
 #define BUZZER_OFF		LPC_GPIO0->FIOCLR = (1<<3);
@@ -78,24 +92,10 @@
 #define RIGHT_ON		!(LPC_GPIO1->FIOPIN & (1<<2))
 
 
-#define IIR_GAIN_ELECTRICAL	16
-#define IIR_GAIN_THERMAL	8
-
 #define PORT_USED	1	// I2C port
 
 #define ECONOMY		(0)
 #define SPORTS 		(1)
-
-#define ECONOMY_RAMP_SPEED	5
-#define SPORTS_RAMP_SPEED	30
-#define REGEN_RAMP_SPEED	30
-
-#define MAX_ESC_CUR			65	// Amps
-
-#define MAX_REGEN			200
-#define MAX_THR_DISP		600
-#define MAX_THR_LOWSPD		750
-#define LOWSPD_THRES		20.0
 
 #define ON		(1)
 #define OFF		(0)

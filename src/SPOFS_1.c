@@ -45,8 +45,8 @@ extern volatile uint8_t I2CSlaveBuffer[I2C_PORT_NUM][BUFSIZE];
 
 volatile unsigned char SWITCH_IO	= 0;
 
-uint16_t THR_POS = 0;
-uint16_t RGN_POS = 0;
+uint16_t thr_pos = 0;
+uint16_t rgn_pos = 0;
 
 /// MPPTs
 MPPT MPPT1;
@@ -319,7 +319,7 @@ void menu_input_check (void)
 	if(RIGHT)
 	{
 		menu_inc(&menu.menu_pos, menu.menu_items);
-		buzzer(50);
+		buzzer(5);
 		if(menu.menu_pos==1){buzzer(300);}else{delayMs(1,400);}
 		if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK){STATS.SWOC_ACK = TRUE;}
 		if((ESC.ERROR & 0x1) && !STATS.HWOC_ACK){STATS.HWOC_ACK = TRUE;BUZZER_OFF}
@@ -344,7 +344,7 @@ void menu_input_check (void)
 	if(LEFT)
 	{
 		menu_dec(&menu.menu_pos, menu.menu_items);
-		buzzer(50);
+		buzzer(5);
 		if(menu.menu_pos==1){buzzer(300);}else{delayMs(1,400);}
 		if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK){STATS.SWOC_ACK = TRUE;}
 		if((ESC.ERROR & 0x1) && !STATS.HWOC_ACK){STATS.HWOC_ACK = TRUE;BUZZER_OFF}
@@ -408,36 +408,36 @@ void menu_drive (void)
 	{
 		ADC_A = (ADCRead(0) + ADCRead(0) + ADCRead(0) + ADCRead(0) + ADCRead(0) + ADCRead(0) + ADCRead(0) + ADCRead(0))/8;
 
-		THR_POS = (1500 - ADC_A);
-		THR_POS = (THR_POS * 9)/10;
-		if(THR_POS < 0){THR_POS = 0;}
-		if(ESC.Velocity_KMH < LOWSPD_THRES && THR_POS > MAX_THR_LOWSPD){THR_POS = MAX_THR_LOWSPD;}
-		if(!menu.driver && THR_POS > MAX_THR_DISP){THR_POS = MAX_THR_DISP;}
-		if(THR_POS > 1000){THR_POS = 1000;}
+		thr_pos = (1500 - ADC_A);
+		thr_pos = (thr_pos * 9)/10;
+		if(thr_pos < 0){thr_pos = 0;}
+		if(ESC.Velocity_KMH < LOWSPD_THRES && thr_pos > MAX_THR_LOWSPD){thr_pos = MAX_THR_LOWSPD;}
+		if(!menu.driver && thr_pos > MAX_THR_DISP){thr_pos = MAX_THR_DISP;}
+		if(thr_pos > 1000){thr_pos = 1000;}
 	}
 
 	/// REGEN
 	ADC_B = (ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1))/8;
 
 	// Calibrate endpoints and add deadband.
-	RGN_POS = (ADC_B - 1660);
-	RGN_POS = (RGN_POS * 9)/10;
-	if(RGN_POS < 0){RGN_POS = 0;}
-	if(RGN_POS > MAX_REGEN){RGN_POS = MAX_REGEN;}
-	if(RGN_POS){STATS.CR_ACT = OFF;}
+	rgn_pos = (ADC_B - 1660);
+	rgn_pos = (rgn_pos * 9)/10;
+	if(rgn_pos < 0){rgn_pos = 0;}
+	if(rgn_pos > MAX_REGEN){rgn_pos = MAX_REGEN;}
+	if(rgn_pos){STATS.CR_ACT = OFF;}
 
 	// MinorSec: DRIVE LOGIC
 	if(!MECH_BRAKE && (FORWARD || REVERSE)){
 		if(STATS.CR_ACT)																				{DRIVE.Current = 1.0; DRIVE.Speed_RPM = STATS.CRUISE_SPEED / ((60 * 3.14 * WHEEL_D_M) / 1000.0);}
-		else if(!THR_POS && !RGN_POS)																	{DRIVE.Speed_RPM = 0; 		DRIVE.Current = 0;}
-		else if(RGN_POS && DRIVE.Current > 0)															{							DRIVE.Current = 0;}
-		else if(RGN_POS && ((DRIVE.Current * 1000) < RGN_POS))											{DRIVE.Speed_RPM = 0; 		DRIVE.Current -= (REGEN_RAMP_SPEED / 1000.0);}
-		else if(RGN_POS)																				{DRIVE.Speed_RPM = 0; 		DRIVE.Current = (RGN_POS / 2);}
-		else if(THR_POS && DRIVE.Current < 0)															{							DRIVE.Current = 0;}
-		else if(FORWARD && ESC.Velocity_KMH > -5.0 && !RGN_POS && ((DRIVE.Current * 1000) < THR_POS))	{DRIVE.Speed_RPM = 1500; 	DRIVE.Current += (STATS.RAMP_SPEED / 1000.0);}
-		else if(FORWARD && ESC.Velocity_KMH > -5.0 && !RGN_POS)											{DRIVE.Speed_RPM = 1500; 	DRIVE.Current = (THR_POS / 1000.0);}
-		else if(REVERSE && ESC.Velocity_KMH < 1.0 && !RGN_POS && ((DRIVE.Current * 1000) < THR_POS))	{DRIVE.Speed_RPM = -200; 	DRIVE.Current += (STATS.RAMP_SPEED / 1000.0);}
-		else if(REVERSE && ESC.Velocity_KMH < 1.0 && !RGN_POS)											{DRIVE.Speed_RPM = -200; 	DRIVE.Current = (THR_POS / 1000.0);}
+		else if(!thr_pos && !rgn_pos)																	{DRIVE.Speed_RPM = 0; 		DRIVE.Current = 0;}
+		else if(rgn_pos && DRIVE.Current > 0)															{							DRIVE.Current = 0;}
+		else if(rgn_pos && ((DRIVE.Current * 1000) < rgn_pos))											{DRIVE.Speed_RPM = 0; 		DRIVE.Current -= (REGEN_RAMP_SPEED / 1000.0);}
+		else if(rgn_pos)																				{DRIVE.Speed_RPM = 0; 		DRIVE.Current = (rgn_pos / 2);}
+		else if(thr_pos && DRIVE.Current < 0)															{							DRIVE.Current = 0;}
+		else if(FORWARD && ESC.Velocity_KMH > -5.0 && !rgn_pos && ((DRIVE.Current * 1000) < thr_pos))	{DRIVE.Speed_RPM = 1500; 	DRIVE.Current += (STATS.RAMP_SPEED / 1000.0);}
+		else if(FORWARD && ESC.Velocity_KMH > -5.0 && !rgn_pos)											{DRIVE.Speed_RPM = 1500; 	DRIVE.Current = (thr_pos / 1000.0);}
+		else if(REVERSE && ESC.Velocity_KMH < 1.0 && !rgn_pos && ((DRIVE.Current * 1000) < thr_pos))	{DRIVE.Speed_RPM = -200; 	DRIVE.Current += (STATS.RAMP_SPEED / 1000.0);}
+		else if(REVERSE && ESC.Velocity_KMH < 1.0 && !rgn_pos)											{DRIVE.Speed_RPM = -200; 	DRIVE.Current = (thr_pos / 1000.0);}
 		else{DRIVE.Speed_RPM = 0; DRIVE.Current = 0;}}
 	else{DRIVE.Speed_RPM = 0; DRIVE.Current = 0;STATS.CR_ACT = 0;}
 }
@@ -453,10 +453,10 @@ void menu_drive (void)
 ******************************************************************************/
 void menu_lights (void)
 {
-	if(MECH_BRAKE || RGN_POS)	{BRAKELIGHT_ON;}
+	if(MECH_BRAKE || rgn_pos)	{BRAKELIGHT_ON;}
 	else						{BRAKELIGHT_OFF;}
 
-	if(!RGN_POS)
+	if(!rgn_pos)
 	{
 		if(REVERSE)		{REVERSE_ON;NEUTRAL_OFF;REGEN_OFF;DRIVE_OFF;STATS.IGNITION = 0x21;}
 		else if(FORWARD){REVERSE_OFF;NEUTRAL_OFF;REGEN_OFF;DRIVE_ON;STATS.IGNITION = 0x28;}
@@ -494,9 +494,7 @@ void menu_lights (void)
 void menu_can_handler (void)
 {
 	/*
-	 * Flag receipt of custom packets requiring extra handling in can.c
-	 * Check flags and handle here
-	 *
+	 * List of packets handled:
 	 * Kill drive - 0x510: use loop to prevent drive logic running. Not done in can.c to release Rx buffer
 	 * SWOC Error - 0x401: Send MC reset packet
 	 */
@@ -507,10 +505,10 @@ void menu_can_handler (void)
 		if((MsgBuf_RX1.MsgID == DASH_RQST) && (MsgBuf_RX1.DataA == 0x4C4C494B) && (MsgBuf_RX1.DataB == 0x45565244)) // Data = KILLDRVE
 		{
 			lcd_clear();
+			char rot1[20], rot2[20];
 
 			if(menu.driver == 3)
 			{
-				char rot1[20], rot2[20];
 				_lcd_putTitle("-GOT DICK-");
 				lcd_putstring(1,0, EROW);
 				sprintf(rot1, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", 0x00, 0x02, 0x04, 0x04, 0x05, 0x00, 0x02, 0x04, 0x04, 0x05, 0x00, 0x02, 0x04, 0x04, 0x05, 0x00, 0x02, 0x04, 0x04, 0x05);
@@ -942,7 +940,7 @@ int main (void)
 	while (FORWARD || REVERSE)
 	{
 		lcd_display_errOnStart();
-		buzzer(700);
+		buzzer(70);
 
 		lcd_clear();
 		delayMs(1, 300);

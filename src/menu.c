@@ -27,7 +27,7 @@
 extern MOTORCONTROLLER ESC;
 extern MPPT MPPT1, MPPT2;
 extern CAN_MSG MsgBuf_TX1;
-extern uint16_t THR_POS, RGN_POS;
+extern uint16_t thr_pos, rgn_pos;
 
 
 //////////////////////////////////////////////
@@ -233,11 +233,11 @@ void lcd_display_home (void)
 	if(STATS.DRIVE_MODE == SPORTS)	{lcd_putstring(1,0, "DRIVE MODE:  SPORTS ");}
 	else							{lcd_putstring(1,0, "DRIVE MODE: ECONOMY ");}
 
-	if(STATS.CR_ACT)				{sprintf(buffer, "CRUISE:    %3d.%d%%   ", ESC.Bus_I * (100 / MAX_ESC_CUR), (ESC.Bus_I * (1000 / MAX_ESC_CUR)) % 10);} // hard coded to 65A = 100% (100 / 65)
-	else if(FORWARD && !RGN_POS)	{sprintf(buffer, "DRIVE:     %3d.%d%%   ", THR_POS/10,THR_POS%10);}
-	else if(REVERSE && !RGN_POS)	{sprintf(buffer, "REVERSE:   %3d.%d%%   ", THR_POS/10,THR_POS%10);}
-	else if(RGN_POS)				{sprintf(buffer, "REGEN:     %3d.%d%%   ", RGN_POS/10,RGN_POS%10);}
-	else							{sprintf(buffer, "NEUTRAL:   %3d.%d%%   ", THR_POS/10,THR_POS%10);}
+	if(STATS.CR_ACT)				{sprintf(buffer, "CRUISE:    %3.1f%%   ", ESC.Bus_I * (100 / MAX_ESC_CUR));} // hard coded to 65A = 100% (100 / 65)
+	else if(FORWARD && !rgn_pos)	{sprintf(buffer, "DRIVE:     %3d.%d%%   ", thr_pos/10,thr_pos%10);}
+	else if(REVERSE && !rgn_pos)	{sprintf(buffer, "REVERSE:   %3d.%d%%   ", thr_pos/10,thr_pos%10);}
+	else if(rgn_pos)				{sprintf(buffer, "REGEN:     %3d.%d%%   ", rgn_pos/10,rgn_pos%10);}
+	else							{sprintf(buffer, "NEUTRAL:   %3d.%d%%   ", thr_pos/10,thr_pos%10);}
 	lcd_putstring(2,0, buffer);
 
 	// If no ERRORS then display MPPT Watts
@@ -269,12 +269,12 @@ void lcd_display_drive (void)
 	else if(REVERSE){lcd_putstring(1,0, "MODE:        REVERSE");}
 	else			{lcd_putstring(1,0, "MODE:        NEUTRAL");}
 
-	if(!RGN_POS)
+	if(!rgn_pos)
 	{
 		sprintf(buffer, "OUTPUT:       %5.1f%%", DRIVE.Current*100);
 		lcd_putstring(2,0, buffer);
 
-		sprintf(buffer, "THROTTLE:     %3d.%d%%", THR_POS/10,THR_POS%10);
+		sprintf(buffer, "THROTTLE:     %3d.%d%%", thr_pos/10,thr_pos%10);
 		lcd_putstring(3,0, buffer);
 	}
 	else
@@ -282,7 +282,7 @@ void lcd_display_drive (void)
 		sprintf(buffer, "OUTPUT:       %5.1f%%", DRIVE.Current*100);
 		lcd_putstring(2,0, buffer);
 
-		sprintf(buffer, "REGEN:        %3d.%d%%", RGN_POS/10,RGN_POS%10);
+		sprintf(buffer, "REGEN:        %3d.%d%%", rgn_pos/10,rgn_pos%10);
 		lcd_putstring(3,0, buffer);
 	}
 }
@@ -311,7 +311,7 @@ void lcd_display_cruise (void)
 			sprintf(buffer, " SET: %3.0f  SPD: %3.0f ", STATS.CRUISE_SPEED, ESC.Velocity_KMH);
 			lcd_putstring(2,0, buffer);
 
-			sprintf(buffer, " THR: %3d%%  ABS: %3.0fA", ESC.Bus_I * (100 / MAX_ESC_CUR), ESC.Bus_I);
+			sprintf(buffer, " THR: %3.0f%% ABS: %3.0fA", ESC.Bus_I * (100 / MAX_ESC_CUR), ESC.Bus_I);
 			lcd_putstring(3,0, buffer);
 
 			// Button presses
@@ -500,7 +500,7 @@ void lcd_display_MPPTPower (void)
 	{
 		MPPT1.WattHrs = 0;
 		MPPT2.WattHrs = 0;
-		buzzer(500);
+		buzzer(50);
 	}
 }
 
@@ -561,7 +561,7 @@ void lcd_display_motor (void)
 			ESC.MAX_Bus_V = 0;
 			ESC.MAX_Watts = 0;
 
-			buzzer(500);
+			buzzer(50);
 		}
 		break;
 	}
@@ -600,7 +600,7 @@ void lcd_display_debug (void)
 	if(SELECT && INCREMENT)
 	{
 		BMU.WattHrs = 0;
-		buzzer(500);
+		buzzer(50);
 	}
 }
 
@@ -625,7 +625,7 @@ void lcd_display_errors (void)
 	sprintf(buffer, "MPPT: %#5x", ((MPPT2.Connected ? 1 : 0) << 9)|((MPPT1.Connected ? 1 : 0) << 8)|(MPPT1.BVLR << 7)|(MPPT1.OVT << 6)|(MPPT1.NOC << 5)|(MPPT1.UNDV << 4)|(MPPT2.BVLR << 3)|(MPPT2.OVT << 2)|(MPPT2.NOC << 1)|(MPPT2.UNDV));
 	lcd_putstring(2,0, buffer);
 
-	sprintf(buffer, "BMU: %d", BMU.Status);
+	sprintf(buffer, "BMU: %lu", BMU.Status);
 	lcd_putstring(3,0, buffer);
 
 	if(SELECT && ESC.ERROR)	// MOTOR CONTROLLER ERROR RESET	GOES BELOW	--	NOT YET TESTED
@@ -782,7 +782,7 @@ void lcd_display_peaks (void)
 		MPPT1.MAX_Watts = 0;
 		MPPT2.MAX_Watts = 0;
 		STATS.MAX_SPEED = 0;
-		buzzer(500);
+		buzzer(50);
 	}
 }
 
@@ -844,7 +844,7 @@ void lcd_display_odometer (void)
 	if(SELECT)
 	{
 		STATS.TR_ODOMETER = 0;
-		buzzer(500);
+		buzzer(50);
 	}
 	else if (INCREMENT && DECREMENT)
 	{
@@ -853,7 +853,7 @@ void lcd_display_odometer (void)
 		{
 			STATS.ODOMETER = 0;
 			STATS.TR_ODOMETER = 0;
-			buzzer(500);
+			buzzer(50);
 		}
 	}
 }
@@ -993,7 +993,6 @@ void lcd_display_CAN_BUS (void) // errors[3]
 ******************************************************************************/
 void _lcd_putTitle (char *_title)
 {
-	// displays first 10 chars of _title and current speed at (0,0) on lcd screen
 	char buffer[20];
 	char spd[11];
 	char *bufadd;
@@ -1050,7 +1049,7 @@ void _buffer_rotate_right (char *_buf, int _len)
 {
 	char _last = *(_buf + _len - 1);
 	char* _cur = (_buf + _len - 1);
-	while(_cur != _buf){*_cur = *(_cur-- - 1);}
+	while(_cur != _buf){*_cur = *(_cur - 1);_cur--;}
 	*_buf = _last;
 }
 
@@ -1068,8 +1067,8 @@ void _buffer_rotate_left (char *_buf, int _len)
 {
 	char _first = *_buf;
 	char* _cur = _buf;
-	while(_cur != (_buf + len - 1)){*_cur = *(_cur++ + 1);}
-	*(_buf + len - 1) = _first;
+	while(_cur != (_buf + _len - 1)){*_cur = *(_cur + 1);_cur++;}
+	*(_buf + _len - 1) = _first;
 }
 
 /******************************************************************************
