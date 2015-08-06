@@ -694,6 +694,29 @@ uint32_t EE_Read (uint16_t _EEadd)
 }
 
 /******************************************************************************
+** Function name:		EE_Seq_Read
+**
+** Description:			Reads a word from EEPROM (Uses I2CRead)
+**
+** Parameters:			1. Address to read from
+** 						2. Byte length of read
+** Returned value:		Data at address
+**
+******************************************************************************/
+uint32_t EE_Seq_Read (uint16_t _EEadd, int _len)
+{
+	uint32_t _ret = 0;
+
+	I2C_Seq_Read(_EEadd, _len);
+	while(_len--)
+	{
+		_ret += I2CSlaveBuffer[PORT_USED][_len] << (_len * 8);
+	}
+
+	return _ret;
+}
+
+/******************************************************************************
 ** Function name:		EE_Write
 **
 ** Description:			Saves a word to EEPROM (Uses I2CWrite)
@@ -744,6 +767,34 @@ uint32_t I2C_Read (uint16_t _EEadd)
 }
 
 /******************************************************************************
+** Function name:		I2C_Seq_Read
+**
+** Description:			Reads a byte from EEPROM
+**
+** Parameters:			1. Address to read from
+** 						2. Byte length of read
+** Returned value:		None
+**
+******************************************************************************/
+void I2C_Seq_Read (uint16_t _EEadd, int read_len)
+{
+	int i;
+	for ( i = 0; i < BUFSIZE; i++ )	  	// clear buffer
+	{
+		I2CSlaveBuffer[PORT_USED][i] = 0;
+	}
+
+	I2CWriteLength[PORT_USED] = 3;
+	I2CReadLength[PORT_USED] = read_len;
+	I2CMasterBuffer[PORT_USED][0] = _24LC256_ADDR;
+	I2CMasterBuffer[PORT_USED][1] = _EEadd & 0x0f00;		// address
+	I2CMasterBuffer[PORT_USED][2] = _EEadd & 0x00ff;		// address
+	I2CMasterBuffer[PORT_USED][3] = _24LC256_ADDR | RD_BIT;
+	I2CEngine( PORT_USED );
+	I2CStop(PORT_USED);
+}
+
+/******************************************************************************
 ** Function name:		I2C_Write
 **
 ** Description:			Saves a word to EEPROM
@@ -770,7 +821,7 @@ void I2C_Write (uint16_t _EEadd, uint8_t data0, uint8_t data1, uint8_t data2, ui
 }
 
 /******************************************************************************
-** Function name:		iirFILTER
+** Function name:		iirFILTER_int
 **
 ** Description:			Filter to flatten out erratic data reads
 **
@@ -780,7 +831,21 @@ void I2C_Write (uint16_t _EEadd, uint8_t data0, uint8_t data1, uint8_t data2, ui
 ** Returned value:		Smoothed value
 **
 ******************************************************************************/
-uint32_t iirFILTER (uint32_t _data_in, uint32_t _cur_data, uint8_t _gain)
+uint32_t iirFILTER_int (uint32_t _data_in, uint32_t _cur_data, uint8_t _gain)
+{return (((_gain-1)*_cur_data)+_data_in)/_gain;}
+
+/******************************************************************************
+** Function name:		iirFILTER_float
+**
+** Description:			Filter to flatten out erratic data reads
+**
+** Parameters:			1. Input data
+** 						2. Existing data
+** 						3. Gain factor
+** Returned value:		Smoothed value
+**
+******************************************************************************/
+float iirFILTER_float (float _data_in, float _cur_data, uint8_t _gain)
 {return (((_gain-1)*_cur_data)+_data_in)/_gain;}
 
 /******************************************************************************
