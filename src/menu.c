@@ -216,7 +216,7 @@ void lcd_display_escBus (void) // likely to remove
 }
 
 /******************************************************************************
-** Function name:		lcd_display_home
+** Function name:		lcd_display_home_orig
 **
 ** Description:			Speed, drive, array power, basic errors
 **
@@ -224,7 +224,7 @@ void lcd_display_escBus (void) // likely to remove
 ** Returned value:		None
 **
 ******************************************************************************/
-void lcd_display_home (void)
+void lcd_display_home_orig (void)
 {
 	char buffer[20];
 
@@ -246,7 +246,55 @@ void lcd_display_home (void)
 	else if(MPPT2.UNDV || MPPT2.OVT)				{sprintf(buffer, "MPPT2  FAULT        ");}
 	else if(BMU.Status & 0x00001FBF)				{sprintf(buffer, "BMU  FAULT          ");}
 	else if(!(MPPT1.Connected && MPPT2.Connected))	{sprintf(buffer, "NO ARRAY            ");}
-	else											{int len = sprintf(buffer, "POWER: %4.1f W", ESC.Watts);_lcd_padding(3, len, 20 - len);}
+	else											{int len = sprintf(buffer, "MOTOR: %4.1f W", ESC.Watts);_lcd_padding(3, len, 20 - len);}
+	lcd_putstring(3,0, buffer);
+}
+
+/******************************************************************************
+** Function name:		lcd_display_home
+**
+** Description:			Speed, drive, array power, basic errors
+**
+** Parameters:			None
+** Returned value:		None
+**
+******************************************************************************/
+void lcd_display_home (void)
+{
+	char buffer[20];
+
+	_lcd_putTitle("-HOME-");
+
+	sprintf(buffer, "MPPT: %3dW Driv: ", MPPT1.Watts + MPPT2.Watts);
+	if(STATS.DRIVE_MODE == SPORTS){sprintf(buffer + 17, "S");}
+	else{sprintf(buffer + 17, "E");}
+
+	if(STATS.CR_ACT){sprintf(buffer + 18, "C ");}
+	else if(FORWARD){sprintf(buffer + 18, "D ");}
+	else if(REVERSE){sprintf(buffer + 18, "R ");}
+	else{sprintf(buffer + 18, "N ");}
+
+	if(rgn_pos){sprintf(buffer + 19, "B");}
+
+	lcd_putstring(1,0, buffer);
+
+	sprintf(buffer, "Bat:  %3dW Thr:", BMU.Watts);
+	if(STATS.CR_ACT){sprintf(buffer + 15, "%3.0f%% ", ESC.Bus_I * (100 / MAX_ESC_CUR));}
+	else if(rgn_pos){sprintf(buffer + 11, "Brk:%3d%% ", rgn_pos/10);}
+	else if(FORWARD){sprintf(buffer + 15, "%3d%% ", thr_pos/10);}
+	else if(REVERSE){sprintf(buffer + 15, "%3d%% ", thr_pos/10);}
+	else{sprintf(buffer + 15, "---%% ");}
+
+	lcd_putstring(2,0, buffer);
+
+	sprintf(buffer, "Motor:%3.0fW Err:", ESC.Watts);
+
+	if(ESC.ERROR)									{sprintf(buffer + 15, "ESC  ");}
+	else if(MPPT1.UNDV || MPPT1.OVT)				{sprintf(buffer + 15, "MPPT1");}
+	else if(MPPT2.UNDV || MPPT2.OVT)				{sprintf(buffer + 15, "MPPT2");}
+	else if(BMU.Status & 0x00001FBF)				{sprintf(buffer + 15, "BMU  ");}
+	else if(!(MPPT1.Connected && MPPT2.Connected))	{sprintf(buffer + 15, "NoARR");}
+	else											{sprintf(buffer + 15, " --- ");}
 	lcd_putstring(3,0, buffer);
 }
 
@@ -397,7 +445,7 @@ void lcd_display_MPPT1(void)
 		sprintf(buffer, "%2lu%cC", MPPT1.Tmp, 0xB2);
 		lcd_putstring(3,16, buffer);
 
-		if(CLOCK.T_mS > 0 && CLOCK.T_mS < 50)
+		if(CLOCK.blink)
 		{
 			if(MPPT1.OVT)		{sprintf(buffer, "OVER TEMP       ");}
 			else if(MPPT1.UNDV)	{sprintf(buffer, "LOW IN VOLTAGE  ");}
@@ -413,7 +461,7 @@ void lcd_display_MPPT1(void)
 		lcd_putstring(1,0, EROW);
 		lcd_putstring(3,0, EROW);
 
-		if(CLOCK.T_mS > 25 && CLOCK.T_mS < 75){lcd_putstring(2,0, "**CONNECTION ERROR**");}
+		if(CLOCK.blink){lcd_putstring(2,0, "**CONNECTION ERROR**");}
 		else{lcd_putstring(2,0, EROW);}
 	}
 }
@@ -447,7 +495,7 @@ void lcd_display_MPPT2(void)
 		sprintf(buffer, "%2lu%cC", MPPT2.Tmp, 0xB2);
 		lcd_putstring(3,16, buffer);
 
-		if(CLOCK.T_mS > 0 && CLOCK.T_mS < 50)
+		if(CLOCK.blink)
 		{
 			if(MPPT2.OVT)		{sprintf(buffer, "OVER TEMP       ");}
 			else if(MPPT2.UNDV)	{sprintf(buffer, "LOW IN VOLTAGE  ");}
@@ -463,7 +511,7 @@ void lcd_display_MPPT2(void)
 		lcd_putstring(1,0, EROW);
 		lcd_putstring(3,0, EROW);
 
-		if(CLOCK.T_mS > 25 && CLOCK.T_mS < 75){lcd_putstring(2,0, "**CONNECTION ERROR**");}
+		if(CLOCK.blink){lcd_putstring(2,0, "**CONNECTION ERROR**");}
 		else{lcd_putstring(2,0, EROW);}
 	}
 }
@@ -663,7 +711,7 @@ void lcd_display_options (void)
 	_lcd_putTitle("-OPTIONS-");
 	lcd_putstring(1,0, EROW);
 
-	if (menu.selected || (CLOCK.T_mS > 25 && CLOCK.T_mS < 75))
+	if (menu.selected || (CLOCK.blink))
 	{
 		switch(menu.submenu_pos)
 		{

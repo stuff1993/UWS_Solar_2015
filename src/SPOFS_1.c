@@ -70,7 +70,7 @@ MOTORCONTROLLER ESC;
 ******************************************************************************/
 void BOD_IRQHandler (void)
 {
-	REVERSE_ON;NEUTRAL_ON;REGEN_ON;DRIVE_ON;FAULT_ON;ECO_ON;SPORTS_ON;
+	HV_OFF;REVERSE_ON;NEUTRAL_ON;REGEN_ON;DRIVE_ON;FAULT_ON;ECO_ON;SPORTS_ON;
 }
 
 /******************************************************************************
@@ -111,6 +111,9 @@ void SysTick_Handler (void)
 		CAN1_SendMessage( &MsgBuf_TX1 );
 		*/
 	}
+
+	if(CLOCK.T_mS / 50){CLOCK.blink = 1;}
+	else{CLOCK.blink = 0;}
 
 	if(STATS.BUZ_TIM)
 	{
@@ -415,6 +418,7 @@ void menu_drive (void)
 		if(!menu.driver && thr_pos > MAX_THR_DISP){thr_pos = MAX_THR_DISP;}
 		if(thr_pos > 1000){thr_pos = 1000;}
 	}
+	else if(!FORWARD){STATS.CR_ACT = OFF;STATS.CR_STS = OFF; STATS.CRUISE_SPEED = 0;} // Must be in forward to use cruise
 
 	/// REGEN
 	ADC_B = (ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1))/8;
@@ -428,16 +432,16 @@ void menu_drive (void)
 
 	// MinorSec: DRIVE LOGIC
 	if(!MECH_BRAKE && (FORWARD || REVERSE)){
-		if(STATS.CR_ACT)																				{DRIVE.Current = 1.0; DRIVE.Speed_RPM = STATS.CRUISE_SPEED / ((60 * 3.14 * WHEEL_D_M) / 1000.0);}
-		else if(!thr_pos && !rgn_pos)																	{DRIVE.Speed_RPM = 0; 		DRIVE.Current = 0;}
-		else if(rgn_pos && DRIVE.Current > 0)															{							DRIVE.Current = 0;}
-		else if(rgn_pos && ((DRIVE.Current * 1000) < rgn_pos))											{DRIVE.Speed_RPM = 0; 		DRIVE.Current -= (REGEN_RAMP_SPEED / 1000.0);}
-		else if(rgn_pos)																				{DRIVE.Speed_RPM = 0; 		DRIVE.Current = (rgn_pos / 2);}
-		else if(thr_pos && DRIVE.Current < 0)															{							DRIVE.Current = 0;}
-		else if(FORWARD && ESC.Velocity_KMH > -5.0 && !rgn_pos && ((DRIVE.Current * 1000) < thr_pos))	{DRIVE.Speed_RPM = 1500; 	DRIVE.Current += (STATS.RAMP_SPEED / 1000.0);}
-		else if(FORWARD && ESC.Velocity_KMH > -5.0 && !rgn_pos)											{DRIVE.Speed_RPM = 1500; 	DRIVE.Current = (thr_pos / 1000.0);}
-		else if(REVERSE && ESC.Velocity_KMH < 1.0 && !rgn_pos && ((DRIVE.Current * 1000) < thr_pos))	{DRIVE.Speed_RPM = -200; 	DRIVE.Current += (STATS.RAMP_SPEED / 1000.0);}
-		else if(REVERSE && ESC.Velocity_KMH < 1.0 && !rgn_pos)											{DRIVE.Speed_RPM = -200; 	DRIVE.Current = (thr_pos / 1000.0);}
+		if(STATS.CR_ACT && FORWARD)																							{DRIVE.Current = 1.0; DRIVE.Speed_RPM = STATS.CRUISE_SPEED / ((60 * 3.14 * WHEEL_D_M) / 1000.0);}
+		else if(!thr_pos && !rgn_pos)																						{DRIVE.Speed_RPM = 0; 		DRIVE.Current = 0;}
+		else if(rgn_pos && DRIVE.Current > 0)																				{							DRIVE.Current = 0;}
+		else if(rgn_pos && (((DRIVE.Current * 1000) + REGEN_RAM_SPEED) < rgn_pos))											{DRIVE.Speed_RPM = 0; 		DRIVE.Current -= (REGEN_RAMP_SPEED / 1000.0);}
+		else if(rgn_pos)																									{DRIVE.Speed_RPM = 0; 		DRIVE.Current = (rgn_pos / 2);}
+		else if(thr_pos && DRIVE.Current < 0)																				{							DRIVE.Current = 0;}
+		else if(FORWARD && ESC.Velocity_KMH > -5.0 && !rgn_pos && (((DRIVE.Current * 1000) + STATS.RAMP_SPEED) < thr_pos))	{DRIVE.Speed_RPM = 1500; 	DRIVE.Current += (STATS.RAMP_SPEED / 1000.0);}
+		else if(FORWARD && ESC.Velocity_KMH > -5.0 && !rgn_pos)																{DRIVE.Speed_RPM = 1500; 	DRIVE.Current = (thr_pos / 1000.0);}
+		else if(REVERSE && ESC.Velocity_KMH < 1.0 && !rgn_pos && (((DRIVE.Current * 1000) + STATS.RAMP_SPEED) < thr_pos))	{DRIVE.Speed_RPM = -200; 	DRIVE.Current += (STATS.RAMP_SPEED / 1000.0);}
+		else if(REVERSE && ESC.Velocity_KMH < 1.0 && !rgn_pos)																{DRIVE.Speed_RPM = -200; 	DRIVE.Current = (thr_pos / 1000.0);}
 		else{DRIVE.Speed_RPM = 0; DRIVE.Current = 0;}}
 	else{DRIVE.Speed_RPM = 0; DRIVE.Current = 0;STATS.CR_ACT = 0;}
 }
@@ -469,16 +473,16 @@ void menu_lights (void)
 		else			{REVERSE_OFF;NEUTRAL_ON;REGEN_OFF;DRIVE_OFF;STATS.IGNITION = 0x22;}
 	}
 
-	if((SWITCH_IO & 0x8) && (CLOCK.T_mS > 25 && CLOCK.T_mS < 75)){BLINKER_L_ON}
+	if((SWITCH_IO & 0x8) && (CLOCK.blink)){BLINKER_L_ON}
 	else{BLINKER_L_OFF}
-	if((SWITCH_IO & 0x10) && (CLOCK.T_mS > 25 && CLOCK.T_mS < 75)){BLINKER_R_ON}
+	if((SWITCH_IO & 0x10) && (CLOCK.blink)){BLINKER_R_ON}
 	else{BLINKER_R_OFF}
 
 	if(SWITCH_IO & 0x4)	{SPORTS_ON;ECO_OFF;}
 	else				{SPORTS_OFF;ECO_ON;}
 
 	if(STATS.FAULT == 1){FAULT_ON}
-	else if(STATS.FAULT == 2 && (CLOCK.T_mS > 25 && CLOCK.T_mS < 75)){FAULT_ON}
+	else if(STATS.FAULT == 2 && (CLOCK.blink)){FAULT_ON}
 	else{FAULT_OFF}
 }
 
@@ -683,6 +687,7 @@ void storeVariables (void)
 ******************************************************************************/
 uint32_t EE_Read (uint16_t _EEadd)
 {
+	return 0; // TODO: Remove
 	uint32_t retDATA = 0;
 
 	retDATA = I2C_Read(_EEadd+3);
@@ -728,6 +733,7 @@ uint32_t EE_Seq_Read (uint16_t _EEadd, int _len)
 ******************************************************************************/
 void EE_Write (uint16_t _EEadd, uint32_t _EEdata)
 {
+	return; // TODO: Remove
 	uint8_t temp0 = (_EEdata & 0x000000FF);
 	uint8_t temp1 = (_EEdata & 0x0000FF00) >> 8;
 	uint8_t temp2 = (_EEdata & 0x00FF0000) >> 16;

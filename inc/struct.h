@@ -301,6 +301,7 @@ struct CLOCK_STRUCT
 	uint8_t		T_M;
 	uint8_t		T_H;
 	uint32_t	T_D;
+	FLAG(blink)			// half second toggle bit
 }CLOCK;
 
 #endif /* STRUCT_H_ */
