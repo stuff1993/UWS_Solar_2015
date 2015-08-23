@@ -290,10 +290,10 @@ void mppt_data_extract (MPPT *_MPPT, fakeMPPTFRAME *_fkMPPT)
 	_VOut = _VOut * 2.10;						// Scaling
 
 	// Update the global variables after IIR filtering
-	_MPPT->Tmp = iirFILTER(((_Data_B & 0xFF0000) >> 16), _MPPT->Tmp, IIR_GAIN_THERMAL);
-	_MPPT->VIn = iirFILTER(_VIn, _MPPT->VIn, IIR_GAIN_ELECTRICAL);
-	_MPPT->IIn = iirFILTER(_IIn, _MPPT->IIn, IIR_GAIN_ELECTRICAL);
-	_MPPT->VOut = iirFILTER(_VOut, _MPPT->VOut, IIR_GAIN_ELECTRICAL);
+	_MPPT->Tmp = iirFILTER_int(((_Data_B & 0xFF0000) >> 16), _MPPT->Tmp, IIR_GAIN_THERMAL);
+	_MPPT->VIn = iirFILTER_int(_VIn, _MPPT->VIn, IIR_GAIN_ELECTRICAL);
+	_MPPT->IIn = iirFILTER_int(_IIn, _MPPT->IIn, IIR_GAIN_ELECTRICAL);
+	_MPPT->VOut = iirFILTER_int(_VOut, _MPPT->VOut, IIR_GAIN_ELECTRICAL);
 	if(_MPPT->Connected<2){_MPPT->Connected = 2;}
 }
 
@@ -322,7 +322,7 @@ void menu_input_check (void)
 	if(RIGHT)
 	{
 		menu_inc(&menu.menu_pos, menu.menu_items);
-		buzzer(5);
+		buzzer(1);
 		if(menu.menu_pos==1){buzzer(300);}else{delayMs(1,400);}
 		if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK){STATS.SWOC_ACK = TRUE;}
 		if((ESC.ERROR & 0x1) && !STATS.HWOC_ACK){STATS.HWOC_ACK = TRUE;BUZZER_OFF}
@@ -347,7 +347,7 @@ void menu_input_check (void)
 	if(LEFT)
 	{
 		menu_dec(&menu.menu_pos, menu.menu_items);
-		buzzer(5);
+		buzzer(1);
 		if(menu.menu_pos==1){buzzer(300);}else{delayMs(1,400);}
 		if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK){STATS.SWOC_ACK = TRUE;}
 		if((ESC.ERROR & 0x1) && !STATS.HWOC_ACK){STATS.HWOC_ACK = TRUE;BUZZER_OFF}
@@ -423,11 +423,14 @@ void menu_drive (void)
 	/// REGEN
 	ADC_B = (ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1))/8;
 
+    // 2.5 -> 1.25 (1575) - 4.5 -> 2.25 (2812)
+	// 3.3 (4095)
 	// Calibrate endpoints and add deadband.
-	rgn_pos = (ADC_B - 1660);
+	rgn_pos = (ADC_B < 1600) ? 0 : ADC_B - 1600; // Bottom Dead-zone calibration
 	rgn_pos = (rgn_pos * 9)/10;
 	if(rgn_pos < 0){rgn_pos = 0;}
-	if(rgn_pos > MAX_REGEN){rgn_pos = MAX_REGEN;}
+	if(rgn_pos > 1000){rgn_pos = 1000;}
+	rgn_pos *= MAX_REGEN / 1000.0;
 	if(rgn_pos){STATS.CR_ACT = OFF;}
 
 	// MinorSec: DRIVE LOGIC
@@ -435,7 +438,7 @@ void menu_drive (void)
 		if(STATS.CR_ACT && FORWARD)																							{DRIVE.Current = 1.0; DRIVE.Speed_RPM = STATS.CRUISE_SPEED / ((60 * 3.14 * WHEEL_D_M) / 1000.0);}
 		else if(!thr_pos && !rgn_pos)																						{DRIVE.Speed_RPM = 0; 		DRIVE.Current = 0;}
 		else if(rgn_pos && DRIVE.Current > 0)																				{							DRIVE.Current = 0;}
-		else if(rgn_pos && (((DRIVE.Current * 1000) + REGEN_RAM_SPEED) < rgn_pos))											{DRIVE.Speed_RPM = 0; 		DRIVE.Current -= (REGEN_RAMP_SPEED / 1000.0);}
+		else if(rgn_pos && (((DRIVE.Current * 1000) + REGEN_RAMP_SPEED) < rgn_pos))											{DRIVE.Speed_RPM = 0; 		DRIVE.Current -= (REGEN_RAMP_SPEED / 1000.0);}
 		else if(rgn_pos)																									{DRIVE.Speed_RPM = 0; 		DRIVE.Current = (rgn_pos / 2);}
 		else if(thr_pos && DRIVE.Current < 0)																				{							DRIVE.Current = 0;}
 		else if(FORWARD && ESC.Velocity_KMH > -5.0 && !rgn_pos && (((DRIVE.Current * 1000) + STATS.RAMP_SPEED) < thr_pos))	{DRIVE.Speed_RPM = 1500; 	DRIVE.Current += (STATS.RAMP_SPEED / 1000.0);}
@@ -537,8 +540,8 @@ void menu_can_handler (void)
 					lcd_putstring_custom(2,0, rot1, 20);
 					lcd_putstring(3,0, rot2);
 				}
-				buzzer(50);
-				delayMs(1,1000);
+				buzzer(5);
+				delayMs(1,250);
 			}
 			lcd_clear();
 		}
@@ -661,18 +664,18 @@ void storeVariables (void)
 	if(CLOCK.T_S % 2)
 	{
 		EE_Write(AddressODO, conv_float_uint(STATS.ODOMETER));
-		delayMs(1,3);
+		//delayMs(1,3);
 		EE_Write(AddressODOTR, conv_float_uint(STATS.TR_ODOMETER));
-		delayMs(1,3);
+		//delayMs(1,3);
 	}
 	else
 	{
 		EE_Write(AddressBMUWHR, conv_float_uint(BMU.WattHrs));
-		delayMs(1,3);
+		//delayMs(1,3);
 		EE_Write(AddressMPPT1WHR, conv_float_uint(MPPT1.WattHrs));
-		delayMs(1,3);
+		//delayMs(1,3);
 		EE_Write(AddressMPPT2WHR, conv_float_uint(MPPT2.WattHrs));
-		delayMs(1,3);
+		//delayMs(1,3);
 	}
 }
 
@@ -687,7 +690,6 @@ void storeVariables (void)
 ******************************************************************************/
 uint32_t EE_Read (uint16_t _EEadd)
 {
-	return 0; // TODO: Remove
 	uint32_t retDATA = 0;
 
 	retDATA = I2C_Read(_EEadd+3);
@@ -733,7 +735,6 @@ uint32_t EE_Seq_Read (uint16_t _EEadd, int _len)
 ******************************************************************************/
 void EE_Write (uint16_t _EEadd, uint32_t _EEdata)
 {
-	return; // TODO: Remove
 	uint8_t temp0 = (_EEdata & 0x000000FF);
 	uint8_t temp1 = (_EEdata & 0x0000FF00) >> 8;
 	uint8_t temp2 = (_EEdata & 0x00FF0000) >> 16;
@@ -793,7 +794,7 @@ void I2C_Seq_Read (uint16_t _EEadd, int read_len)
 	I2CWriteLength[PORT_USED] = 3;
 	I2CReadLength[PORT_USED] = read_len;
 	I2CMasterBuffer[PORT_USED][0] = _24LC256_ADDR;
-	I2CMasterBuffer[PORT_USED][1] = _EEadd & 0x0f00;		// address
+	I2CMasterBuffer[PORT_USED][1] = (_EEadd & 0x0f00) >> 8;	// address
 	I2CMasterBuffer[PORT_USED][2] = _EEadd & 0x00ff;		// address
 	I2CMasterBuffer[PORT_USED][3] = _24LC256_ADDR | RD_BIT;
 	I2CEngine( PORT_USED );
@@ -987,9 +988,11 @@ int main (void)
 	DRIVE.Current = 0; 		// Values set here to stop car from accelerating if memory is not blank on reset
 	DRIVE.Speed_RPM = 0;
 
-	SysTick_Config(SystemCoreClock / 100);		// 10mS Systicker.
-
 	I2C1Init();
+
+	recallVariables();
+
+	SysTick_Config(SystemCoreClock / 100);		// 10mS Systicker.
 
 	ADCInit(ADC_CLK);
 
@@ -1000,11 +1003,10 @@ int main (void)
 
 	BOD_Init();
 
+
 	lcd_display_driver();
 
 	lcd_display_intro();
-
-	recallVariables();
 
 	menu_init();
 

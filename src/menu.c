@@ -64,7 +64,7 @@ void lcd_display_driver (void)
 	char sel[2], blank[2];
 
 	menu.driver = 255;
-	menu.submenu_pos = 0;
+	menu.submenu_pos = 1;
 	menu.selected = 0;
 
 	_lcd_putTitle("-DRIVER-");
@@ -265,7 +265,7 @@ void lcd_display_home (void)
 
 	_lcd_putTitle("-HOME-");
 
-	sprintf(buffer, "MPPT: %3dW Driv: ", MPPT1.Watts + MPPT2.Watts);
+	sprintf(buffer, "MPPT: %3luW Driv: ", MPPT1.Watts + MPPT2.Watts);
 	if(STATS.DRIVE_MODE == SPORTS){sprintf(buffer + 17, "S");}
 	else{sprintf(buffer + 17, "E");}
 
@@ -278,7 +278,7 @@ void lcd_display_home (void)
 
 	lcd_putstring(1,0, buffer);
 
-	sprintf(buffer, "Bat:  %3dW Thr:", BMU.Watts);
+	sprintf(buffer, "Bat:  %3luW Thr:", BMU.Watts);
 	if(STATS.CR_ACT){sprintf(buffer + 15, "%3.0f%% ", ESC.Bus_I * (100 / MAX_ESC_CUR));}
 	else if(rgn_pos){sprintf(buffer + 11, "Brk:%3d%% ", rgn_pos/10);}
 	else if(FORWARD){sprintf(buffer + 15, "%3d%% ", thr_pos/10);}
@@ -363,9 +363,21 @@ void lcd_display_cruise (void)
 			lcd_putstring(3,0, buffer);
 
 			// Button presses
-			if (SELECT)										{STATS.CR_ACT = OFF;delayMs(1,500);}
-			else if (INCREMENT)								{STATS.CRUISE_SPEED += 1;delayMs(1,500);}
-			else if (DECREMENT && STATS.CRUISE_SPEED > 1)	{STATS.CRUISE_SPEED -= 1;delayMs(1,500);}
+            if(SELECT || menu.sel_dwn)
+			{
+				if(!SELECT && menu.sel_dwn){STATS.CR_ACT = OFF;delayMs(1,500);}
+				else{menu.sel_dwn = 1;}
+			}
+			else if(INCREMENT || menu.inc_dwn)
+			{
+				if(!INCREMENT && menu.inc_dwn){STATS.CRUISE_SPEED += 1;delayMs(1,500);}
+				else{menu.inc_dwn = 1;}
+			}
+			else if((STATS.CRUISE_SPEED > 1) && (DECREMENT || menu.dec_dwn))
+			{
+				if(!DECREMENT && menu.dec_dwn){STATS.CRUISE_SPEED -= 1;delayMs(1,500);}
+				else{menu.dec_dwn = 1;}
+			}
 		}
 		else if(STATS.CR_STS && !STATS.CR_ACT)
 		{
@@ -377,9 +389,21 @@ void lcd_display_cruise (void)
 			lcd_putstring(3,0, EROW);
 
 			// Button presses
-			if(SELECT)										{STATS.CR_STS = OFF;STATS.CRUISE_SPEED = 0;delayMs(1,500);}
-			else if(INCREMENT && (STATS.CRUISE_SPEED > 1))	{STATS.CR_ACT = ON;delayMs(1,500);}
-			else if(DECREMENT)								{STATS.CRUISE_SPEED = ESC.Velocity_KMH;STATS.CR_ACT = ON;delayMs(1,500);}
+            if(SELECT || menu.sel_dwn)
+			{
+				if(!SELECT && menu.sel_dwn){STATS.CR_STS = OFF;STATS.CRUISE_SPEED = 0;delayMs(1,500);}
+				else{menu.sel_dwn = 1;}
+			}
+			else if((STATS.CRUISE_SPEED > 1) && (INCREMENT || menu.inc_dwn))
+			{
+				if(!INCREMENT && menu.inc_dwn){STATS.CR_ACT = ON;delayMs(1,500);}
+				else{menu.inc_dwn = 1;}
+			}
+			else if(DECREMENT || menu.dec_dwn)
+			{
+				if(!DECREMENT && menu.dec_dwn){STATS.CRUISE_SPEED = ESC.Velocity_KMH;STATS.CR_ACT = ON;delayMs(1,500);}
+				else{menu.dec_dwn = 1;}
+			}
 		}
 		else if(STATS.CR_ACT && !STATS.CR_STS) // Should never trip, but just in case
 		{
@@ -401,7 +425,11 @@ void lcd_display_cruise (void)
 			lcd_putstring(3,0, EROW);
 
 			// Button presses
-			if(SELECT){STATS.CRUISE_SPEED = 0;STATS.CR_STS = ON;delayMs(1,500);}
+            if(SELECT || menu.sel_dwn)
+			{
+				if(!SELECT && menu.sel_dwn){STATS.CRUISE_SPEED = 0;STATS.CR_STS = ON;delayMs(1,500);}
+				else{menu.sel_dwn = 1;}
+			}
 		}
 	}
 	else // no cruise in reverse

@@ -22,10 +22,10 @@
 
 #define MAX_ESC_CUR			65.0	// Amps
 
-#define MAX_REGEN			200
-#define MAX_THR_DISP		600
-#define MAX_THR_LOWSPD		750
-#define LOWSPD_THRES		20.0
+#define MAX_REGEN			350.0		// Maximum available regen - 0 to 1000 (0% to 100%)
+#define MAX_THR_DISP		600.0		// Maximum available throttle in display mode - 0 - 1000 (0% - 100%)
+#define MAX_THR_LOWSPD		750.0		// Maximum available throttle under LOWSPD_THRES - 0 - 1000 (0% - 100%)
+#define LOWSPD_THRES		20.0    	// Threshold speed for low speed throttle cap
 
 #define IIR_GAIN_ELECTRICAL	100
 #define IIR_GAIN_THERMAL	10
@@ -132,8 +132,10 @@ void esc_reset (void);
 void recallVariables(void);
 void storeVariables(void);
 uint32_t EE_Read(uint16_t _EEadd);
+uint32_t EE_Seq_Read(uint16_t _EEadd, int _len);
 void EE_Write(uint16_t _EEadd, uint32_t data);
 uint32_t I2C_Read(uint16_t _EEadd);
+void I2C_Seq_Read(uint16_t _EEadd, int read_len);
 void I2C_Write(uint16_t _EEadd, uint8_t data0, uint8_t data1, uint8_t data2, uint8_t data3);
 uint32_t iirFILTER_int(uint32_t _data_in, uint32_t _cur_data, uint8_t _gain);
 float iirFILTER_float(float _data_in, float _cur_data, uint8_t _gain);
