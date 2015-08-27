@@ -52,11 +52,11 @@
 #define REVERSE_ON		LPC_GPIO1->FIOSET |= (1<<23);
 #define REVERSE_OFF		LPC_GPIO1->FIOCLR |= (1<<23);
 
-#define NEUTRAL_ON		LPC_GPIO1->FIOSET |= (1<<24);
-#define NEUTRAL_OFF		LPC_GPIO1->FIOCLR |= (1<<24);
+#define REGEN_ON		LPC_GPIO1->FIOSET |= (1<<24);
+#define REGEN_OFF		LPC_GPIO1->FIOCLR |= (1<<24);
 
-#define REGEN_ON		LPC_GPIO1->FIOSET |= (1<<25);
-#define REGEN_OFF		LPC_GPIO1->FIOCLR |= (1<<25);
+#define NEUTRAL_ON		LPC_GPIO1->FIOSET |= (1<<25);
+#define NEUTRAL_OFF		LPC_GPIO1->FIOCLR |= (1<<25);
 
 #define DRIVE_ON		LPC_GPIO1->FIOSET |= (1<<26);
 #define DRIVE_OFF		LPC_GPIO1->FIOCLR |= (1<<26);
@@ -73,23 +73,23 @@
 /// INPUTS
 #define MECH_BRAKE		!(LPC_GPIO0->FIOPIN & (1<<25))
 
-#define LEFT 			!(LPC_GPIO0->FIOPIN & (1<<0))
+#define LEFT 			    !(LPC_GPIO0->FIOPIN & (1<<0))
 #define INCREMENT 		!(LPC_GPIO0->FIOPIN & (1<<1))
-#define DECREMENT		!(LPC_GPIO1->FIOPIN & (1<<27))
-#define RIGHT			!(LPC_GPIO1->FIOPIN & (1<<28))
-#define SELECT 			!(LPC_GPIO1->FIOPIN & (1<<29))
+#define DECREMENT		  !(LPC_GPIO1->FIOPIN & (1<<27))
+#define RIGHT			    !(LPC_GPIO1->FIOPIN & (1<<28))
+#define SELECT 			  !(LPC_GPIO1->FIOPIN & (1<<29))
 
-#define FORWARD 		!(LPC_GPIO0->FIOPIN & (1<<11))
-#define REVERSE 		!(LPC_GPIO0->FIOPIN & (1<<10))
+#define FORWARD 		  !(LPC_GPIO0->FIOPIN & (1<<11))
+#define REVERSE 		  !(LPC_GPIO0->FIOPIN & (1<<10))
 
 #define SPORTS_MODE		!(LPC_GPIO2->FIOPIN & (1<<10)) // Aux_ON
 #define ECONOMY_MODE	!(LPC_GPIO2->FIOPIN & (1<<11)) // Aux_OFF
 
-#define CC_ON			!(LPC_GPIO2->FIOPIN & (1<<12))
-#define CC_OFF			!(LPC_GPIO2->FIOPIN & (1<<13))
+#define CC_ON			    !(LPC_GPIO2->FIOPIN & (1<<12))
+#define CC_OFF		    !(LPC_GPIO2->FIOPIN & (1<<13))
 
-#define LEFT_ON			!(LPC_GPIO1->FIOPIN & (1<<1))
-#define RIGHT_ON		!(LPC_GPIO1->FIOPIN & (1<<2))
+#define LEFT_ON			  !(LPC_GPIO1->FIOPIN & (1<<1))
+#define RIGHT_ON		  !(LPC_GPIO1->FIOPIN & (1<<2))
 
 
 #define PORT_USED	1	// I2C port
@@ -130,7 +130,7 @@ void menu_can_handler(void);
 void menu_calc(void);
 void esc_reset (void);
 void recallVariables(void);
-void storeVariables(void);
+void store_persistent(void);
 uint32_t EE_Read(uint16_t _EEadd);
 uint32_t EE_Seq_Read(uint16_t _EEadd, int _len);
 void EE_Write(uint16_t _EEadd, uint32_t data);

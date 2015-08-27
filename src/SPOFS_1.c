@@ -136,10 +136,10 @@ void SysTick_Handler (void)
 	{
 		CLOCK.T_mS = 0;CLOCK.T_S++;
 
-		if(MPPT1.Connected>0){MPPT1.Connected--;} // if disconnected for 2 seconds. Then FLAG disconnect.
-		if(MPPT2.Connected>0){MPPT2.Connected--;} // if disconnected for 2 seconds. Then FLAG disconnect.
+		if((MPPT1.flags & 0x03) >0){MPPT1.flags |= (((MPPT1.flags & 0x03) >> 0) - 1) & 0x03;} // if disconnected for 2 seconds. Then FLAG disconnect.
+		if((MPPT2.flags & 0x03) >0){MPPT2.flags |= (((MPPT2.flags & 0x03) >> 0) - 1) & 0x03;} // if disconnected for 2 seconds. Then FLAG disconnect.
 
-		storeVariables(); // Store data in eeprom every second
+		store_persistent(); // Store data in eeprom every second
 
 		if(CLOCK.T_S >= 60){CLOCK.T_S = 0;CLOCK.T_M++;
 		if(CLOCK.T_M >= 60){CLOCK.T_M = 0;CLOCK.T_H++;
@@ -180,7 +180,7 @@ void menu_mppt_poll (void)
 	{
 		MsgBuf_TX1.Frame = 0x00070000; 						// 11-bit, no RTR, DLC is 7 bytes
 		MsgBuf_TX1.MsgID = MPPT2_RPLY;
-		if (MPPT2.Connected)
+		if (MPPT2.flags & 0x03)
 		{
 			MsgBuf_TX1.DataA = fakeMPPT2.DataA;
 			MsgBuf_TX1.DataB = fakeMPPT2.DataB;
@@ -196,7 +196,7 @@ void menu_mppt_poll (void)
 	{
 		MsgBuf_TX1.Frame = 0x00070000; 						// 11-bit, no RTR, DLC is 7 bytes
 		MsgBuf_TX1.MsgID = MPPT1_RPLY;
-		if (MPPT1.Connected)
+		if (MPPT1.flags & 0x03)
 		{
 			MsgBuf_TX1.DataA = fakeMPPT1.DataA;
 			MsgBuf_TX1.DataB = fakeMPPT1.DataB;
@@ -224,7 +224,7 @@ void menu_mppt_poll (void)
 	}
 
 	// Check mppt connection timeouts - clear instantaneous data
-	if(!MPPT1.Connected)
+	if(!(MPPT1.flags & 0x03))
 	{
 		MPPT1.VIn = 0;
 		MPPT1.IIn = 0;
@@ -235,7 +235,7 @@ void menu_mppt_poll (void)
 		fakeMPPT1.DataB = 0;
 	}
 
-	if(!MPPT2.Connected)
+	if(!(MPPT2.flags & 0x03))
 	{
 		MPPT2.VIn = 0;
 		MPPT2.IIn = 0;
@@ -270,10 +270,7 @@ void mppt_data_extract (MPPT *_MPPT, fakeMPPTFRAME *_fkMPPT)
 	_fkMPPT->DataB = _Data_B;
 
 	// Status Flags
-	_MPPT->BVLR = ((_Data_A & 0x80) >> 7);  	// Battery voltage level reached
-	_MPPT->OVT  = ((_Data_A & 0x40) >> 6);  	// Over temperature
-	_MPPT->NOC  = ((_Data_A & 0x20) >> 5);  	// No Connection
-	_MPPT->UNDV = ((_Data_A & 0x10) >> 4);  	// Under voltage on input
+	_MPPT->flags |= ((_Data_A & 0xF0) >> 2);
 
 	// Power Variables
 	_VIn = ((_Data_A & 0b11) << 8);  			// Masking and shifting the upper 2 MSB
@@ -294,7 +291,7 @@ void mppt_data_extract (MPPT *_MPPT, fakeMPPTFRAME *_fkMPPT)
 	_MPPT->VIn = iirFILTER_int(_VIn, _MPPT->VIn, IIR_GAIN_ELECTRICAL);
 	_MPPT->IIn = iirFILTER_int(_IIn, _MPPT->IIn, IIR_GAIN_ELECTRICAL);
 	_MPPT->VOut = iirFILTER_int(_VOut, _MPPT->VOut, IIR_GAIN_ELECTRICAL);
-	if(_MPPT->Connected<2){_MPPT->Connected = 2;}
+	_MPPT->flags |= 0x03; // Connection timing bits
 }
 
 /******************************************************************************
@@ -319,54 +316,64 @@ void menu_input_check (void)
 
 	if(OLD_IO != SWITCH_IO){buzzer(50);}	// BEEP if toggle position has changed.
 
-	if(RIGHT)
+	if(RIGHT || MENU_RIGHT_DWN)
 	{
-		menu_inc(&menu.menu_pos, menu.menu_items);
-		buzzer(1);
-		if(menu.menu_pos==1){buzzer(300);}else{delayMs(1,400);}
-		if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK){STATS.SWOC_ACK = TRUE;}
-		if((ESC.ERROR & 0x1) && !STATS.HWOC_ACK){STATS.HWOC_ACK = TRUE;BUZZER_OFF}
-		if(STATS.COMMS == 1)
-		{
-			if((LPC_CAN1->GSR & (1 << 3)))				// Check Global Status Reg
-			{
-				MsgBuf_TX1.Frame = 0x00010000; 			// 11-bit, no RTR, DLC is 1 byte
-				MsgBuf_TX1.MsgID = DASH_RPLY + 1;
-				MsgBuf_TX1.DataA = 0x0;
-				MsgBuf_TX1.DataB = 0x0;
-				CAN1_SendMessage( &MsgBuf_TX1 );
-			}
-			STATS.COMMS = 0;
-		}
+	  if(!RIGHT && MENU_RIGHT_DWN)
+	  {
+	    CLR_MENU_RIGHT_DWN;
+	    menu_inc(&menu.menu_pos, menu.menu_items);
+	    buzzer(2);
+	    if(menu.menu_pos==1){buzzer(300);}else{delayMs(1,400);}
+	    if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK){STATS.SWOC_ACK = TRUE;}
+	    if((ESC.ERROR & 0x1) && !STATS.HWOC_ACK){STATS.HWOC_ACK = TRUE;BUZZER_OFF}
+	    if(STATS.COMMS == 1)
+	    {
+	      if((LPC_CAN1->GSR & (1 << 3)))				// Check Global Status Reg
+	      {
+	        MsgBuf_TX1.Frame = 0x00010000; 			// 11-bit, no RTR, DLC is 1 byte
+	        MsgBuf_TX1.MsgID = DASH_RPLY + 1;
+	        MsgBuf_TX1.DataA = 0x0;
+	        MsgBuf_TX1.DataB = 0x0;
+	        CAN1_SendMessage( &MsgBuf_TX1 );
+	      }
+	      STATS.COMMS = 0;
+	    }
 
-		lcd_clear();
-		menu.selected = 0;
-		menu.submenu_pos = 0;
+	    lcd_clear();
+	    CLR_MENU_SELECTED;
+	    menu.submenu_pos = 0;
+	  }
+	  else{SET_MENU_RIGHT_DWN;}
 	}
 
-	if(LEFT)
+	if(LEFT || MENU_LEFT_DWN)
 	{
-		menu_dec(&menu.menu_pos, menu.menu_items);
-		buzzer(1);
-		if(menu.menu_pos==1){buzzer(300);}else{delayMs(1,400);}
-		if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK){STATS.SWOC_ACK = TRUE;}
-		if((ESC.ERROR & 0x1) && !STATS.HWOC_ACK){STATS.HWOC_ACK = TRUE;BUZZER_OFF}
-		if(STATS.COMMS == 1)
-		{
-			if((LPC_CAN1->GSR & (1 << 3)))				// Check Global Status Reg
-			{
-				MsgBuf_TX1.Frame = 0x00010000; 			// 11-bit, no RTR, DLC is 1 byte
-				MsgBuf_TX1.MsgID = DASH_RPLY + 1;
-				MsgBuf_TX1.DataA = 0x0;
-				MsgBuf_TX1.DataB = 0x0;
-				CAN1_SendMessage( &MsgBuf_TX1 );
-			}
-			STATS.COMMS = 0;
-		}
+	  if(!LEFT && MENU_LEFT_DWN)
+	  {
+	    CLR_MENU_LEFT_DWN;
+	    menu_dec(&menu.menu_pos, menu.menu_items);
+	    buzzer(2);
+	    if(menu.menu_pos==1){buzzer(300);}else{delayMs(1,400);}
+	    if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK){STATS.SWOC_ACK = TRUE;}
+	    if((ESC.ERROR & 0x1) && !STATS.HWOC_ACK){STATS.HWOC_ACK = TRUE;BUZZER_OFF}
+	    if(STATS.COMMS == 1)
+	    {
+	      if((LPC_CAN1->GSR & (1 << 3)))				// Check Global Status Reg
+	      {
+	        MsgBuf_TX1.Frame = 0x00010000; 			// 11-bit, no RTR, DLC is 1 byte
+	        MsgBuf_TX1.MsgID = DASH_RPLY + 1;
+	        MsgBuf_TX1.DataA = 0x0;
+	        MsgBuf_TX1.DataB = 0x0;
+	        CAN1_SendMessage( &MsgBuf_TX1 );
+	      }
+	      STATS.COMMS = 0;
+	    }
 
-		lcd_clear();
-		menu.selected = 0;
-		menu.submenu_pos = 0;
+	    lcd_clear();
+	    CLR_MENU_SELECTED;
+	    menu.submenu_pos = 0;
+	  }
+	  else{SET_MENU_LEFT_DWN;}
 	}
 
 	if(SWITCH_IO & 0x4)	{STATS.DRIVE_MODE = SPORTS;STATS.RAMP_SPEED = SPORTS_RAMP_SPEED;}
@@ -388,7 +395,7 @@ void menu_input_check (void)
 int menu_fault_check (void)
 {
 	if(ESC.ERROR || (BMU.Status & 0xD37) || STATS.CAN_BUS){return 2;}
-	if(MPPT1.UNDV || MPPT1.OVT || MPPT2.UNDV || MPPT2.OVT || (BMU.Status & 0x1288)){return 1;}
+	if(MPPT1.flags & 0x28 || MPPT2.flags & 0x28 || (BMU.Status & 0x1288)){return 1;}
 	return 0;
 }
 
@@ -651,7 +658,7 @@ void recallVariables (void)
 }
 
 /******************************************************************************
-** Function name:		storeVariables
+** Function name:		store_persistent
 **
 ** Description:			Saves persistent variables to EEPROM
 **
@@ -659,7 +666,7 @@ void recallVariables (void)
 ** Returned value:		None
 **
 ******************************************************************************/
-void storeVariables (void)
+void store_persistent (void)
 {
 	if(CLOCK.T_S % 2)
 	{
@@ -978,7 +985,6 @@ void BOD_Init ( void )
 ******************************************************************************/
 int main (void)
 {
-
 	SystemInit();
 	SystemCoreClockUpdate();
 

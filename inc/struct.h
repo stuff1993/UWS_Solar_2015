@@ -13,7 +13,6 @@
 #endif // FLAG(x)
 
 /// MPPT
-#define _MPPT_FLAGS 1
 #define _MPPT_POWER 1
 #define _MPPT_PEAKS 1
 
@@ -57,15 +56,8 @@ typedef struct // MPPT
 	uint32_t VOut;				// Output Voltage
 	uint32_t IIn;				// Input Current
 	uint32_t Tmp;				// Temperature in degrees
-#if _MPPT_FLAGS
-	FLAG(BVLR)					// Battery voltage level reached flag
-	FLAG(OVT)					// Over Temperature Flag
-	FLAG(NOC)					// No Battery Connected
-	FLAG(UNDV)					// Vin Under-voltage Flag
-#endif // _MPPT_FLAGS
+	uint8_t flags;
 
-	/// Calculated Values & Peaks
-	unsigned int Connected :2;	// 2 bit field for 0-2 count range
 #if _MPPT_POWER
 	uint32_t Watts;				// Watts into MPPT
 	float WattHrs;				// Watt Hours
