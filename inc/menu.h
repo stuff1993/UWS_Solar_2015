@@ -91,6 +91,12 @@ void _buffer_rotate_left(char *_buf, int _len);
 void menu_inc(uint8_t *_pos, uint8_t _total);
 void menu_dec(uint8_t *_pos, uint8_t _total);
 
+uint8_t btn_release_select(void);
+uint8_t btn_release_increment(void);
+uint8_t btn_release_decrement(void);
+uint8_t btn_release_left(void);
+uint8_t btn_release_right(void);
+
 void menu_init (void);
 
 #endif /* MENU_H_ */

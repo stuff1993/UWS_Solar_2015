@@ -105,16 +105,9 @@ void lcd_display_driver (void)
 			break;
 		}
 
-		if(SELECT || MENU_SEL_DWN)
-		{
-			if(!SELECT && MENU_SEL_DWN)
-			{
-				CLR_MENU_SEL_DWN;
-				menu.driver = menu.submenu_pos;
-			}
-			else{SET_MENU_SEL_DWN;}
-		}
-		else if(INCREMENT || DECREMENT || MENU_INC_DWN || MENU_DEC_DWN)
+		if(btn_release_select()){menu.driver = menu.submenu_pos;}
+
+		if(INCREMENT || DECREMENT || MENU_INC_DWN || MENU_DEC_DWN)
 		{
 			if((!INCREMENT && MENU_INC_DWN) || (!DECREMENT && MENU_DEC_DWN))
 			{
@@ -363,21 +356,11 @@ void lcd_display_cruise (void)
 			lcd_putstring(3,0, buffer);
 
 			// Button presses
-      if(SELECT || MENU_SEL_DWN)
-			{
-				if(!SELECT && MENU_SEL_DWN){CLR_MENU_SEL_DWN;STATS.CR_ACT = OFF;}
-				else{SET_MENU_SEL_DWN;}
-			}
-			else if(INCREMENT || MENU_INC_DWN)
-			{
-				if(!INCREMENT && MENU_INC_DWN){CLR_MENU_INC_DWN;STATS.CRUISE_SPEED += 1;}
-				else{SET_MENU_INC_DWN;}
-			}
-			else if((STATS.CRUISE_SPEED > 1) && (DECREMENT || MENU_DEC_DWN))
-			{
-				if(!DECREMENT && MENU_DEC_DWN){CLR_MENU_DEC_DWN;STATS.CRUISE_SPEED -= 1;}
-				else{SET_MENU_DEC_DWN;}
-			}
+			if(btn_release_select())								{STATS.CR_ACT = OFF;}
+
+			if(btn_release_increment())								{STATS.CRUISE_SPEED += 1;}
+
+			if((STATS.CRUISE_SPEED > 1) && btn_release_decrement())	{STATS.CRUISE_SPEED -= 1;}
 		}
 		else if(STATS.CR_STS && !STATS.CR_ACT)
 		{
@@ -389,21 +372,12 @@ void lcd_display_cruise (void)
 			lcd_putstring(3,0, EROW);
 
 			// Button presses
-      if(SELECT || MENU_SEL_DWN)
-      {
-        if(!SELECT && MENU_SEL_DWN){CLR_MENU_SEL_DWN;STATS.CR_STS = OFF;STATS.CRUISE_SPEED = 0;}
-				else{SET_MENU_SEL_DWN;}
-			}
-			else if((STATS.CRUISE_SPEED > 1) && (INCREMENT || MENU_INC_DWN))
-			{
-				if(!INCREMENT && MENU_INC_DWN){CLR_MENU_INC_DWN;STATS.CR_ACT = ON;}
-				else{SET_MENU_INC_DWN;}
-			}
-			else if(DECREMENT || MENU_DEC_DWN)
-			{
-				if(!DECREMENT && MENU_DEC_DWN){CLR_MENU_DEC_DWN;STATS.CRUISE_SPEED = ESC.Velocity_KMH;STATS.CR_ACT = ON;}
-				else{SET_MENU_DEC_DWN;}
-			}
+			if(btn_release_select())								{STATS.CR_STS = OFF;STATS.CRUISE_SPEED = 0;}
+
+			if((STATS.CRUISE_SPEED > 1) && btn_release_increment())	{STATS.CR_ACT = ON;}
+
+			if(btn_release_decrement())								{STATS.CRUISE_SPEED = ESC.Velocity_KMH;STATS.CR_ACT = ON;}
+
 		}
 		else if(STATS.CR_ACT && !STATS.CR_STS) // Should never trip, but just in case
 		{
@@ -425,11 +399,7 @@ void lcd_display_cruise (void)
 			lcd_putstring(3,0, EROW);
 
 			// Button presses
-      if(SELECT || MENU_SEL_DWN)
-      {
-        if(!SELECT && MENU_SEL_DWN){CLR_MENU_SEL_DWN;STATS.CRUISE_SPEED = 0;STATS.CR_STS = ON;}
-				else{SET_MENU_SEL_DWN;}
-			}
+			if(btn_release_select()){STATS.CRUISE_SPEED = 0;STATS.CR_STS = ON;}
 		}
 	}
 	else // no cruise in reverse
@@ -572,11 +542,34 @@ void lcd_display_MPPTPower (void)
 	lcd_putstring(3,0, buffer);
 	if(len<20){_lcd_padding(3, len, 20 - len);}
 
-	if(SELECT && INCREMENT)
+	if(SELECT || INCREMENT || MENU_SEL_DWN || MENU_INC_DWN)
 	{
-		MPPT1.WattHrs = 0;
-		MPPT2.WattHrs = 0;
-		buzzer(50);
+		if(!(SELECT || INCREMENT) && (MENU_SEL_DWN && MENU_INC_DWN))
+		{
+			MPPT1.WattHrs = 0;
+			MPPT2.WattHrs = 0;
+			buzzer(50);
+			CLR_MENU_INC_DWN;
+			CLR_MENU_SEL_DWN;
+		}
+		else if(SELECT && !INCREMENT)
+		{
+			SET_MENU_SEL_DWN;
+		}
+		else if(!SELECT && INCREMENT)
+		{
+			SET_MENU_INC_DWN;
+		}
+		else if(SELECT && INCREMENT)
+		{
+			SET_MENU_INC_DWN;
+			SET_MENU_SEL_DWN;
+		}
+		else
+		{
+			CLR_MENU_INC_DWN;
+			CLR_MENU_SEL_DWN;
+		}
 	}
 }
 
@@ -645,8 +638,10 @@ void lcd_display_motor (void)
 	lcd_putstring(3,0, buffer);
 	if(len<20){_lcd_padding(3, len, 20 - len);}
 
-	if(INCREMENT)		{menu_inc(&menu.submenu_pos, menu.submenu_items);delayMs(1,500);}
-	else if(DECREMENT)	{menu_dec(&menu.submenu_pos, menu.submenu_items);delayMs(1,500);}
+	/// BUTTONS
+	if(btn_release_increment()){menu_inc(&menu.submenu_pos, menu.submenu_items);}
+
+	if(btn_release_decrement()){menu_dec(&menu.submenu_pos, menu.submenu_items);}
 }
 
 /******************************************************************************
@@ -673,10 +668,33 @@ void lcd_display_debug (void)
 	sprintf(buffer, "BUS P: %4lu Watts  ", BMU.Watts);
 	lcd_putstring(3,0, buffer);
 
-	if(SELECT && INCREMENT)
+	if(SELECT || INCREMENT || MENU_SEL_DWN || MENU_INC_DWN)
 	{
-		BMU.WattHrs = 0;
-		buzzer(50);
+		if(!(SELECT || INCREMENT) && (MENU_SEL_DWN && MENU_INC_DWN))
+		{
+			BMU.WattHrs = 0;
+			buzzer(50);
+			CLR_MENU_INC_DWN;
+			CLR_MENU_SEL_DWN;
+		}
+		else if(SELECT && !INCREMENT)
+		{
+			SET_MENU_SEL_DWN;
+		}
+		else if(!SELECT && INCREMENT)
+		{
+			SET_MENU_INC_DWN;
+		}
+		else if(SELECT && INCREMENT)
+		{
+			SET_MENU_INC_DWN;
+			SET_MENU_SEL_DWN;
+		}
+		else
+		{
+			CLR_MENU_INC_DWN;
+			CLR_MENU_SEL_DWN;
+		}
 	}
 }
 
@@ -704,7 +722,7 @@ void lcd_display_errors (void)
 	sprintf(buffer, "BMU: %lu", BMU.Status);
 	lcd_putstring(3,0, buffer);
 
-	if(SELECT && ESC.ERROR)	// MOTOR CONTROLLER ERROR RESET	GOES BELOW	--	NOT YET TESTED
+	if(btn_release_select() && ESC.ERROR)	// MOTOR CONTROLLER ERROR RESET	GOES BELOW	--	NOT YET TESTED
 	{
 		sprintf(buffer, "RESET MOTOR CONTROLS");
 		lcd_putstring(1,0, buffer);
@@ -716,7 +734,6 @@ void lcd_display_errors (void)
 			esc_reset();
 			buzzer(50);
 		}
-		delayMs(1,1000);
 	}
 }
 
@@ -768,85 +785,60 @@ void lcd_display_options (void)
 	_lcd_padding(3,len, 20 - len);
 
 	/////////////////////////////   ACTIONS   //////////////////////////////
-	if(SELECT || MENU_SEL_DWN)
+	if(btn_release_select())
 	{
-	  if(!SELECT && MENU_SEL_DWN)
-	  {
-	    CLR_MENU_SEL_DWN;
-	    if(MENU_SELECTED)
-	    {
-	      switch(menu.submenu_pos)
-	      {
-	        case 0:
-	          EE_Write(AddressBUZZ, STATS.BUZZER);
-	          break;
-	        case 1:
-	          menu_init();
-	          break;
-	      }
-	      CLR_MENU_SELECTED;
-	    }
-	    else
-	    {
-	      SET_MENU_SELECTED;
-	    }
-	  }
-	  else
-	  {
-	    SET_MENU_SEL_DWN;
-	  }
+		if(MENU_SELECTED)
+		{
+			switch(menu.submenu_pos)
+			{
+			case 0:
+				EE_Write(AddressBUZZ, STATS.BUZZER);
+				break;
+			case 1:
+				menu_init();
+				break;
+			}
+			CLR_MENU_SELECTED;
+		}
+		else{SET_MENU_SELECTED;}
 	}
-	else if(INCREMENT || MENU_INC_DWN)
+
+	if(btn_release_increment())
 	{
-	  if(!INCREMENT && MENU_INC_DWN)
-	  {
-	    CLR_MENU_INC_DWN;
-	    if(MENU_SELECTED)
-	    {
-	      switch(menu.submenu_pos)
-	      {
-	        case 0:
-	          STATS.BUZZER ^= 0b1;
-	          break;
-	        case 1:
-	          menu.driver = (menu.driver + 1) % 4;
-	          break;
-	        default:
-	          break;
-	      }
-	    }
-	    else
-	    {
-	      menu_inc(&menu.submenu_pos, menu.submenu_items);
-	    }
-	  }
-	  else{SET_MENU_INC_DWN;}
+		if(MENU_SELECTED)
+		{
+			switch(menu.submenu_pos)
+			{
+			case 0:
+				STATS.BUZZER ^= 0b1;
+				break;
+			case 1:
+				menu.driver = (menu.driver + 1) % 4;
+				break;
+			default:
+				break;
+			}
+		}
+		else{menu_inc(&menu.submenu_pos, menu.submenu_items);}
 	}
-	else if(DECREMENT || MENU_DEC_DWN)
+
+	if(btn_release_decrement())
 	{
-	  if(!DECREMENT && MENU_DEC_DWN)
-	  {
-	    CLR_MENU_DEC_DWN;
-	    if(MENU_SELECTED)
-	    {
-	      switch(menu.submenu_pos)
-	      {
-	        case 0:
-	          STATS.BUZZER ^= 0b1;
-	          break;
-	        case 1:
-	          menu.driver = (menu.driver + 3) % 4;
-	          break;
-	        default:
-	          break;
-	      }
-	    }
-	    else
-	    {
-	      menu_dec(&menu.submenu_pos, menu.submenu_items);
-	    }
-	  }
-	  else{SET_MENU_DEC_DWN;}
+		if(MENU_SELECTED)
+		{
+			switch(menu.submenu_pos)
+			{
+			case 0:
+				STATS.BUZZER ^= 0b1;
+				break;
+			case 1:
+				menu.driver = (menu.driver + 3) % 4;
+				break;
+			default:
+				break;
+			}
+		}
+		else{menu_dec(&menu.submenu_pos, menu.submenu_items);}
 	}
 }
 
@@ -877,7 +869,7 @@ void lcd_display_peaks (void)
 	lcd_putstring(3,0, buffer);
 	if(len<20){_lcd_padding(3, len, 20 - len);}
 
-	if(SELECT)
+	if(btn_release_select())
 	{
 		MPPT1.MAX_Watts = 0;
 		MPPT2.MAX_Watts = 0;
@@ -941,20 +933,22 @@ void lcd_display_odometer (void)
 	lcd_putstring(3,0, buffer);
 	if(len<20){_lcd_padding(3, len, 20 - len);}
 
-	if(SELECT)
+	if(btn_release_select()){STATS.TR_ODOMETER = 0;buzzer(50);}
+
+	if(INCREMENT || DECREMENT || MENU_INC_DWN || MENU_DEC_DWN)
 	{
-		STATS.TR_ODOMETER = 0;
-		buzzer(50);
-	}
-	else if (INCREMENT && DECREMENT)
-	{
-		delayMs(1,1000);
-		if (INCREMENT && DECREMENT)
+		if(!(INCREMENT || DECREMENT) && (MENU_INC_DWN && MENU_DEC_DWN))
 		{
 			STATS.ODOMETER = 0;
 			STATS.TR_ODOMETER = 0;
 			buzzer(50);
+			CLR_MENU_DEC_DWN;
+			CLR_MENU_INC_DWN;
 		}
+		else if(INCREMENT && !DECREMENT){SET_MENU_INC_DWN;}
+		else if(!INCREMENT && DECREMENT){SET_MENU_DEC_DWN;}
+		else if(INCREMENT && DECREMENT)	{SET_MENU_DEC_DWN;SET_MENU_INC_DWN;}
+		else							{CLR_MENU_DEC_DWN;CLR_MENU_INC_DWN;}
 	}
 }
 ///////////////////////////////////////////////
@@ -979,16 +973,33 @@ void lcd_display_SWOC (void) // errors[0]
 	lcd_putstring(3,0, "PRESS OTHER 2 CANCEL");
 
 	// BUTTONS
-	if(SELECT)
+	if(SELECT || MENU_SEL_DWN)
 	{
-		if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
+		if(!SELECT && MENU_SEL_DWN)
 		{
-			esc_reset();
-			buzzer(20);
+			CLR_MENU_SEL_DWN;
+			if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
+			{
+				esc_reset();
+				buzzer(20);
+			}
 		}
-		delayMs(1,500);
+		else{SET_MENU_SEL_DWN;}
 	}
-	else if(INCREMENT || DECREMENT){STATS.SWOC_ACK = TRUE;}	// mark error acknowledged
+
+	if(INCREMENT || DECREMENT || MENU_INC_DWN || MENU_DEC_DWN)
+	{
+		if(!(INCREMENT || DECREMENT) && (MENU_INC_DWN && MENU_DEC_DWN))
+		{
+			CLR_MENU_DEC_DWN;
+			CLR_MENU_INC_DWN;
+			STATS.SWOC_ACK = TRUE;
+		}
+		else if(INCREMENT && !DECREMENT){SET_MENU_INC_DWN;}
+		else if(!INCREMENT && DECREMENT){SET_MENU_DEC_DWN;}
+		else if(INCREMENT && DECREMENT)	{SET_MENU_DEC_DWN;SET_MENU_INC_DWN;}
+		else							{CLR_MENU_DEC_DWN;CLR_MENU_INC_DWN;}
+	}
 }
 
 /******************************************************************************
@@ -1007,15 +1018,36 @@ void lcd_display_HWOC (void) // errors[1]
 	lcd_putstring(2,0, "PRESS SELECT 2 RESET");
 	lcd_putstring(3,0, "PRESS OTHER 2 CANCEL");
 
-	BUZZER_ON
+	BUZZER_ON;
 
 	// BUTTONS
-	if(SELECT)
+	if(SELECT || MENU_SEL_DWN)
 	{
-		if((LPC_CAN1->GSR & (1 << 3))){esc_reset();}
-		delayMs(1,500);
+		if(!SELECT && MENU_SEL_DWN)
+		{
+			CLR_MENU_SEL_DWN;
+			if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
+			{
+				esc_reset();
+				BUZZER_OFF;
+			}
+		}
+		else{SET_MENU_SEL_DWN;}
 	}
-	else if(INCREMENT || DECREMENT){STATS.HWOC_ACK = TRUE;}	// mark error acknowledged
+
+	if(INCREMENT || DECREMENT || MENU_INC_DWN || MENU_DEC_DWN)
+	{
+		if(!(INCREMENT || DECREMENT) && (MENU_INC_DWN && MENU_DEC_DWN))
+		{
+			CLR_MENU_DEC_DWN;
+			CLR_MENU_INC_DWN;
+			STATS.HWOC_ACK = TRUE;
+		}
+		else if(INCREMENT && !DECREMENT){SET_MENU_INC_DWN;}
+		else if(!INCREMENT && DECREMENT){SET_MENU_DEC_DWN;}
+		else if(INCREMENT && DECREMENT)	{SET_MENU_DEC_DWN;SET_MENU_INC_DWN;}
+		else							{CLR_MENU_DEC_DWN;CLR_MENU_INC_DWN;}
+	}
 }
 
 /******************************************************************************
@@ -1034,32 +1066,46 @@ void lcd_display_COMMS (void) // errors[2]
 	lcd_putstring(2,0, "SELECT: RADIO WORKS ");
 	lcd_putstring(3,0, "OTHER:  NO RESPONSE ");
 
-	if(SELECT)
+	if(SELECT || MENU_SEL_DWN)
 	{
-		if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
+		if(!SELECT && MENU_SEL_DWN)
 		{
-			MsgBuf_TX1.Frame = 0x00010000; 			// 11-bit, no RTR, DLC is 1 byte
-			MsgBuf_TX1.MsgID = DASH_RPLY + 1;
-			MsgBuf_TX1.DataA = 0xFF;
-			MsgBuf_TX1.DataB = 0x0;
-			CAN1_SendMessage( &MsgBuf_TX1 );
+			CLR_MENU_SEL_DWN;
+			if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
+			{
+				MsgBuf_TX1.Frame = 0x00010000; 			// 11-bit, no RTR, DLC is 1 byte
+				MsgBuf_TX1.MsgID = DASH_RPLY + 1;
+				MsgBuf_TX1.DataA = 0xFF;
+				MsgBuf_TX1.DataB = 0x0;
+				CAN1_SendMessage( &MsgBuf_TX1 );
+			}
+			STATS.COMMS = 0;
 		}
-		STATS.COMMS = 0;
-		delayMs(1,500);
+		else{SET_MENU_SEL_DWN;}
 	}
-	else if(INCREMENT || DECREMENT)
+
+	if(INCREMENT || DECREMENT || MENU_INC_DWN || MENU_DEC_DWN)
 	{
-		if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
+		if(!(INCREMENT || DECREMENT) && (MENU_INC_DWN && MENU_DEC_DWN))
 		{
-			MsgBuf_TX1.Frame = 0x00010000; 			// 11-bit, no RTR, DLC is 1 byte
-			MsgBuf_TX1.MsgID = DASH_RPLY + 1;
-			MsgBuf_TX1.DataA = 0x0;
-			MsgBuf_TX1.DataB = 0x0;
-			CAN1_SendMessage( &MsgBuf_TX1 );
+			CLR_MENU_DEC_DWN;
+			CLR_MENU_INC_DWN;
+			if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
+			{
+				MsgBuf_TX1.Frame = 0x00010000; 			// 11-bit, no RTR, DLC is 1 byte
+				MsgBuf_TX1.MsgID = DASH_RPLY + 1;
+				MsgBuf_TX1.DataA = 0x0;
+				MsgBuf_TX1.DataB = 0x0;
+				CAN1_SendMessage( &MsgBuf_TX1 );
+			}
+			STATS.COMMS = 0;
 		}
-		STATS.COMMS = 0;
-		delayMs(1,500);
+		else if(INCREMENT && !DECREMENT){SET_MENU_INC_DWN;}
+		else if(!INCREMENT && DECREMENT){SET_MENU_DEC_DWN;}
+		else if(INCREMENT && DECREMENT)	{SET_MENU_DEC_DWN;SET_MENU_INC_DWN;}
+		else							{CLR_MENU_DEC_DWN;CLR_MENU_INC_DWN;}
 	}
+
 }
 
 /******************************************************************************
@@ -1196,6 +1242,121 @@ void menu_inc (uint8_t *_pos, uint8_t _total)
 ******************************************************************************/
 void menu_dec (uint8_t *_pos, uint8_t _total)
 {*_pos = (*_pos + _total - 1) % _total;}
+
+/******************************************************************************
+** Function name:		btn_release_select
+**
+** Description:			Checks for button release (SELECT)
+**
+** Parameters:			None
+** Returned value:		If button has been released since last function call
+**
+******************************************************************************/
+uint8_t btn_release_select(void)
+{
+	if(SELECT || MENU_SEL_DWN)
+	{
+		if(!SELECT && MENU_SEL_DWN)
+		{
+			CLR_MENU_SEL_DWN;
+			return 1;
+		}
+		else{SET_MENU_SEL_DWN;}
+	}
+	return 0;
+}
+
+/******************************************************************************
+** Function name:		btn_release_increment
+**
+** Description:			Checks for button release (INCREMENT)
+**
+** Parameters:			None
+** Returned value:		If button has been released since last function call
+**
+******************************************************************************/
+uint8_t btn_release_increment(void)
+{
+	if(INCREMENT || MENU_INC_DWN)
+	{
+		if(!INCREMENT && MENU_INC_DWN)
+		{
+			CLR_MENU_INC_DWN;
+			return 1;
+		}
+		else{SET_MENU_INC_DWN;}
+	}
+	return 0;
+}
+
+/******************************************************************************
+** Function name:		btn_release_decrement
+**
+** Description:			Checks for button release (DECREMENT)
+**
+** Parameters:			None
+** Returned value:		If button has been released since last function call
+**
+******************************************************************************/
+uint8_t btn_release_decrement(void)
+{
+	if(DECREMENT || MENU_DEC_DWN)
+	{
+		if(!DECREMENT && MENU_DEC_DWN)
+		{
+			CLR_MENU_DEC_DWN;
+			return 1;
+		}
+		else{SET_MENU_DEC_DWN;}
+	}
+	return 0;
+}
+
+/******************************************************************************
+** Function name:		btn_release_left
+**
+** Description:			Checks for button release (LEFT)
+**
+** Parameters:			None
+** Returned value:		If button has been released since last function call
+**
+******************************************************************************/
+uint8_t btn_release_left(void)
+{
+	if(LEFT || MENU_LEFT_DWN)
+	{
+		if(!SELECT && MENU_LEFT_DWN)
+		{
+			CLR_MENU_LEFT_DWN;
+			return 1;
+		}
+		else{SET_MENU_LEFT_DWN;}
+	}
+	return 0;
+}
+
+/******************************************************************************
+** Function name:		btn_release_right
+**
+** Description:			Checks for button release (RIGHT)
+**
+** Parameters:			None
+** Returned value:		If button has been released since last function call
+**
+******************************************************************************/
+uint8_t btn_release_right(void)
+{
+	if(RIGHT || MENU_RIGHT_DWN)
+	{
+		if(!SELECT && MENU_RIGHT_DWN)
+		{
+			CLR_MENU_RIGHT_DWN;
+			return 1;
+		}
+		else{SET_MENU_RIGHT_DWN;}
+	}
+	return 0;
+}
 
 /******************************************************************************
 ** Function name:		menu_init
