@@ -29,13 +29,13 @@ void lcd_command_write(unsigned char command)
 	if(TEMP & 0b01000000){D2_H;} else{D2_L;}
 	if(TEMP & 0b00100000){D1_H;} else{D1_L;}
 	if(TEMP & 0b00010000){D0_H;} else{D0_L;}
-	delay10US(5); E_H; delay10US(5); E_L; delay10US(5);		// Pulse the Enable Pin
+	E_H; delay10US(5); E_L;		// Pulse the Enable Pin
 
 	if(TEMP & 0b00001000){D3_H;} else{D3_L;}
 	if(TEMP & 0b00000100){D2_H;} else{D2_L;}
 	if(TEMP & 0b00000010){D1_H;} else{D1_L;}
 	if(TEMP & 0b00000001){D0_H;} else{D0_L;}
-	delay10US(5); E_H; delay10US(5); E_L; delay10US(5);		// Pulse the Enable Pin
+	E_H; delay10US(5); E_L;		// Pulse the Enable Pin
 }
 
 
@@ -48,19 +48,19 @@ void lcd_data_write( unsigned char data )
 	if(TEMP & 0b01000000){D2_H;} else{D2_L;}
 	if(TEMP & 0b00100000){D1_H;} else{D1_L;}
 	if(TEMP & 0b00010000){D0_H;} else{D0_L;}
-	delay10US(5); E_H; delay10US(5); E_L; delay10US(5);	// Pulse the Enable Pin
+	E_H; delay10US(5); E_L;	// Pulse the Enable Pin
 
 	if(TEMP & 0b00001000){D3_H;} else{D3_L;}
 	if(TEMP & 0b00000100){D2_H;} else{D2_L;}
 	if(TEMP & 0b00000010){D1_H;} else{D1_L;}
 	if(TEMP & 0b00000001){D0_H;} else{D0_L;}
-	delay10US(5); E_H; delay10US(5); E_L; delay10US(5);		// Pulse the Enable Pin
+	E_H; delay10US(5); E_L;	// Pulse the Enable Pin
 }
 
 void lcd_clear( void)
 {
 	lcd_command_write( 0x01 );
-	delay10US(1);
+	delay10US(5);
 }
 
 
@@ -82,7 +82,7 @@ void lcd_gotoxy( unsigned int x, unsigned int y)
 	{
 		lcd_command_write( 0xC0 + y + 20 );		// command - position cursor at 0x40 (0x80 + 0x00 )
 	}
-	delay10US(1);
+
 }
 
 void lcd_putchar( int c )
@@ -105,7 +105,8 @@ void lcd_putstring_custom( unsigned char line, unsigned char Pos, char *string, 
 	while(_len--)
 	{
 		lcd_putchar( *string++ );
-		delay10US(1);
+
+
 	}
 }
 
@@ -118,7 +119,8 @@ void lcd_putstring( unsigned char line, unsigned char Pos, char *string )
 	while(*string != '\0' && _len--)
 	{
 		lcd_putchar( *string++ );
-		delay10US(1);
+
+
 	}
 }
 
@@ -126,13 +128,34 @@ void setLCD( void )
 {
 	delayMs(1,50);
 
-	lcd_command_write(0b00101001);	//   function set - 4-bit interface
+	/*lcd_command_write(0b00101001);	//   function set - 4-bit interface
 	delay10US(10);
 	lcd_command_write(0b00001000);	//   display off
 	delay10US(10);
 	lcd_clear();
 	lcd_command_write(0b00000110);	//   cursor move direction
 	delay10US(10);
+
+
+
+
+	lcd_command_write(0b00000010);	// cursor home
+	delay10US(50);
+	lcd_command_write(0b00001100);	// display on
+	delay10US(50);
+
+	lcd_gotoxy(0, 0);
+	delay10US(10);
+	lcd_clear();*/
+
+	lcd_command_write(0b00000010);     /*   cursor home                                 */
+	delayMs(1,2);
+	lcd_command_write(0b00000110);     /*   cursor move direction                       */
+	delayMs(1,2);
+	lcd_command_write(0b00001100) ;    /*   display on      */
+	delayMs(1,2);
+	lcd_command_write(0b00101000);     /*   4-bit interface, two line, 5X7 dots.        */
+	delayMs(1,2);
 
 	// setup custom characters
 	lcd_command_write(0b01000000); delay10US(50);	// move to first CGRAM location
@@ -190,12 +213,14 @@ void setLCD( void )
 	lcd_data_write(0b00000010);	delay10US(50);
 	lcd_data_write(0b00011100);	delay10US(50);
 
-	lcd_command_write(0b00000010);	// cursor home
-	delay10US(50);
-	lcd_command_write(0b00001100);	// display on
-	delay10US(50);
+
+
+
+
 
 	lcd_gotoxy(0, 0);
-	delay10US(10);
+
+	delayMs(1,2);
 	lcd_clear();
+	delayMs(1,2);
 }

@@ -73,10 +73,10 @@
 /// INPUTS
 #define MECH_BRAKE		!(LPC_GPIO0->FIOPIN & (1<<25))
 
-#define LEFT 			    !(LPC_GPIO0->FIOPIN & (1<<0))
+#define LEFT 			    !(LPC_GPIO1->FIOPIN & (1<<27))
 #define INCREMENT 		!(LPC_GPIO0->FIOPIN & (1<<1))
-#define DECREMENT		  !(LPC_GPIO1->FIOPIN & (1<<27))
-#define RIGHT			    !(LPC_GPIO1->FIOPIN & (1<<28))
+#define DECREMENT		  !(LPC_GPIO1->FIOPIN & (1<<28))
+#define RIGHT			    !(LPC_GPIO0->FIOPIN & (1<<0))
 #define SELECT 			  !(LPC_GPIO1->FIOPIN & (1<<29))
 
 #define FORWARD 		  !(LPC_GPIO0->FIOPIN & (1<<11))
@@ -89,7 +89,7 @@
 #define CC_OFF		    !(LPC_GPIO2->FIOPIN & (1<<13))
 
 #define LEFT_ON			  !(LPC_GPIO1->FIOPIN & (1<<1))
-#define RIGHT_ON		  !(LPC_GPIO1->FIOPIN & (1<<2))
+#define RIGHT_ON		  !(LPC_GPIO1->FIOPIN & (1<<0))
 
 
 #define PORT_USED	1	// I2C port

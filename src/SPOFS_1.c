@@ -323,7 +323,7 @@ void menu_input_check (void)
 	    CLR_MENU_RIGHT_DWN;
 	    menu_inc(&menu.menu_pos, menu.menu_items);
 	    buzzer(2);
-	    if(menu.menu_pos==1){buzzer(300);}
+	    if(menu.menu_pos==0){buzzer(10);}
 	    if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK){STATS.SWOC_ACK = TRUE;}
 	    if((ESC.ERROR & 0x1) && !STATS.HWOC_ACK){STATS.HWOC_ACK = TRUE;BUZZER_OFF}
 	    if(STATS.COMMS == 1)
@@ -353,7 +353,7 @@ void menu_input_check (void)
 	    CLR_MENU_LEFT_DWN;
 	    menu_dec(&menu.menu_pos, menu.menu_items);
 	    buzzer(2);
-	    if(menu.menu_pos==1){buzzer(300);}
+	    if(menu.menu_pos==0){buzzer(10);}
 	    if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK){STATS.SWOC_ACK = TRUE;}
 	    if((ESC.ERROR & 0x1) && !STATS.HWOC_ACK){STATS.HWOC_ACK = TRUE;BUZZER_OFF}
 	    if(STATS.COMMS == 1)
@@ -418,7 +418,7 @@ void menu_drive (void)
 	{
 		ADC_A = (ADCRead(0) + ADCRead(0) + ADCRead(0) + ADCRead(0) + ADCRead(0) + ADCRead(0) + ADCRead(0) + ADCRead(0))/8;
 
-		thr_pos = (1500 - ADC_A);
+		thr_pos = (1500 < ADC_A) ? 0 : 1500 - ADC_A;
 		thr_pos = (thr_pos * 9)/10;
 		if(thr_pos < 0){thr_pos = 0;}
 		if(ESC.Velocity_KMH < LOWSPD_THRES && thr_pos > MAX_THR_LOWSPD){thr_pos = MAX_THR_LOWSPD;}
