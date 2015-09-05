@@ -8,10 +8,6 @@
 #ifndef STRUCT_H_
 #define STRUCT_H_
 
-#ifndef FLAG
-#define FLAG(x) unsigned int x :1;
-#endif // FLAG(x)
-
 /// MPPT
 #define _MPPT_POWER 1
 #define _MPPT_PEAKS 1
@@ -256,27 +252,64 @@ struct // BMU
 struct // STATS
 {
 	unsigned int RAMP_SPEED;	// .1%
-	uint8_t IGNITION; 			// TODO: TESTING - Remove if 0x505 packet unused
 	uint8_t BUZ_TIM;			// 10mS ticks to sound buzzer
 	float ODOMETER; 			// km
 	float TR_ODOMETER; 			// km
 	float MAX_SPEED; 			// kmh
 	float CRUISE_SPEED; 		// kmh
-	FLAG(DRIVE_MODE)
-	FLAG(BUZZER)
-	FLAG(MPPT_POLL_COUNT)
-	FLAG(ARMED)
-	// Errors
-	FLAG(SWOC_ACK)
-	FLAG(HWOC_ACK)
-	FLAG(COMMS)
-	FLAG(CAN_BUS)
-	// Cruise
-	FLAG(CR_ACT)
-	FLAG(CR_STS)
-
-	unsigned int FAULT :2;
+	uint8_t flags;
+	uint8_t errors;
 }STATS;
+
+#define STATS_DRV_MODE       ((STATS.flags & 0x01) >> 0)
+#define STATS_BUZZER         ((STATS.flags & 0x02) >> 1)
+#define STATS_MPPT_POLL      ((STATS.flags & 0x04) >> 2)
+#define STATS_ARMED          ((STATS.flags & 0x08) >> 3)
+#define STATS_CR_ACT         ((STATS.flags & 0x10) >> 4)
+#define STATS_CR_STS         ((STATS.flags & 0x20) >> 5)
+#define STATS_FUNUSED_1       ((STATS.flags & 0x40) >> 6)
+#define STATS_FUNUSED_2       ((STATS.flags & 0x80) >> 7)
+
+#define SET_STATS_DRV_MODE   STATS.flags |= 0x01;	// Sports Flagged
+#define SET_STATS_BUZZER     STATS.flags |= 0x02;
+#define SET_STATS_MPPT_POLL  STATS.flags |= 0x04;
+#define SET_STATS_ARMED      STATS.flags |= 0x08;
+#define SET_STATS_CR_ACT     STATS.flags |= 0x10;
+#define SET_STATS_CR_STS     STATS.flags |= 0x20;
+#define SET_STATS_FUNUSED_1   STATS.flags |= 0x40;
+#define SET_STATS_FUNUSED_2   STATS.flags |= 0x80;
+
+#define CLR_STATS_DRV_MODE   STATS.flags &= 0xFE;	// Economy Flagged
+#define CLR_STATS_BUZZER     STATS.flags &= 0xFD;
+#define CLR_STATS_MPPT_POLL  STATS.flags &= 0xFB;
+#define CLR_STATS_ARMED      STATS.flags &= 0xF7;
+#define CLR_STATS_CR_ACT     STATS.flags &= 0xEF;
+#define CLR_STATS_CR_STS     STATS.flags &= 0xDF;
+#define CLR_STATS_FUNUSED_1   STATS.flags &= 0xBF;
+#define CLR_STATS_FUNUSED_2   STATS.flags &= 0x7F;
+
+#define STATS_SWOC_ACK       ((STATS.errors & 0x01) >> 0)
+#define STATS_HWOC_ACK       ((STATS.errors & 0x02) >> 1)
+#define STATS_COMMS          ((STATS.errors & 0x04) >> 2)
+#define STATS_FAULT          ((STATS.errors & 0x18) >> 3)
+#define STATS_EUNUSED_1       ((STATS.errors & 0x20) >> 5)
+#define STATS_EUNUSED_2       ((STATS.errors & 0x40) >> 6)
+#define STATS_EUNUSED_3       ((STATS.errors & 0x80) >> 7)
+
+#define SET_STATS_SWOC_ACK   STATS.errors |= 0x01;
+#define SET_STATS_HWOC_ACK   STATS.errors |= 0x02;
+#define SET_STATS_COMMS      STATS.errors |= 0x04;
+#define SET_STATS_EUNUSED_1   STATS.errors |= 0x20;
+#define SET_STATS_EUNUSED_2   STATS.errors |= 0x40;
+#define SET_STATS_EUNUSED_3   STATS.errors |= 0x80;
+
+#define CLR_STATS_SWOC_ACK   STATS.errors &= 0xFE;
+#define CLR_STATS_HWOC_ACK   STATS.errors &= 0xFD;
+#define CLR_STATS_COMMS      STATS.errors &= 0xFB;
+#define CLR_STATS_EUNUSED_1   STATS.errors &= 0xDF;
+#define CLR_STATS_EUNUSED_2   STATS.errors &= 0xBF;
+#define CLR_STATS_EUNUSED_3   STATS.errors &= 0x7F;
+
 
 struct // DRIVE
 {
@@ -285,15 +318,14 @@ struct // DRIVE
 }DRIVE;
 
 
-
 struct CLOCK_STRUCT
 {
-	uint8_t		T_mS; // (mS / 10)
+	uint8_t		T_mS;	// (mS / 10)
 	uint8_t		T_S;
 	uint8_t		T_M;
 	uint8_t		T_H;
 	uint32_t	T_D;
-	FLAG(blink)			// half second toggle bit
+	uint8_t 	blink;	// half second toggle bit
 }CLOCK;
 
 #endif /* STRUCT_H_ */

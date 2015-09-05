@@ -87,7 +87,7 @@ void SysTick_Handler (void)
 	CLOCK.T_mS++;
 
 	// MinorSec: DIU CAN Heart Beat
-	if((!(CLOCK.T_mS % 10)) && STATS.ARMED) // Every 100 mS send heart beat CAN packets
+	if((!(CLOCK.T_mS % 10)) && STATS_ARMED) // Every 100 mS send heart beat CAN packets
 	{
 		MsgBuf_TX1.Frame = 0x00080000;
 		MsgBuf_TX1.MsgID = ESC_CONTROL + 1;
@@ -98,18 +98,9 @@ void SysTick_Handler (void)
 
 		MsgBuf_TX1.Frame = 0x00080000;
 		MsgBuf_TX1.MsgID = ESC_CONTROL + 2;
-		MsgBuf_TX1.DataA = conv_float_uint(1);
-		MsgBuf_TX1.DataB = 0x0;
+		MsgBuf_TX1.DataA = 0x0;
+		MsgBuf_TX1.DataB = conv_float_uint(1);
 		CAN1_SendMessage( &MsgBuf_TX1 );
-
-		// TODO: TESTING - Check if required
-		/*
-		MsgBuf_TX1.Frame = 0x00080000;
-		MsgBuf_TX1.MsgID = ESC_CONTROL + 5;
-		MsgBuf_TX1.DataA = STATS.IGNITION;
-		MsgBuf_TX1.DataB = 0x0;
-		CAN1_SendMessage( &MsgBuf_TX1 );
-		*/
 	}
 
 	if(CLOCK.T_mS / 50){CLOCK.blink = 1;}
@@ -160,10 +151,11 @@ void SysTick_Handler (void)
 ******************************************************************************/
 void menu_mppt_poll (void)
 {
-	STATS.MPPT_POLL_COUNT ^= 0b1; 								// Toggle bit. Selects which MPPT to poll this round
+	if(STATS_MPPT_POLL){CLR_STATS_MPPT_POLL;}			// Toggle bit. Selects which MPPT to poll this round
+	else{SET_STATS_MPPT_POLL;}
 
 	// 1. Sends request packet to MPPT (125K CAN Bus)
-	if((LPC_CAN2->GSR & (1 << 3)) && STATS.MPPT_POLL_COUNT)	// Check Global Status Reg
+	if((LPC_CAN2->GSR & (1 << 3)) && STATS_MPPT_POLL)	// Check Global Status Reg
 	{
 		MsgBuf_TX2.MsgID = MPPT2_BASE;
 		CAN2_SendMessage( &MsgBuf_TX2 );
@@ -176,7 +168,7 @@ void menu_mppt_poll (void)
 	}
 
 	// 2. Sends previous MPPT packet to car (500K CAN Bus)
-	if((LPC_CAN1->GSR & (1 << 3)) && STATS.MPPT_POLL_COUNT)	// Check Global Status Reg
+	if((LPC_CAN1->GSR & (1 << 3)) && STATS_MPPT_POLL)	// Check Global Status Reg
 	{
 		MsgBuf_TX1.Frame = 0x00070000; 						// 11-bit, no RTR, DLC is 7 bytes
 		MsgBuf_TX1.MsgID = MPPT2_RPLY;
@@ -324,9 +316,9 @@ void menu_input_check (void)
 	    menu_inc(&menu.menu_pos, menu.menu_items);
 	    buzzer(2);
 	    if(menu.menu_pos==0){buzzer(10);}
-	    if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK){STATS.SWOC_ACK = TRUE;}
-	    if((ESC.ERROR & 0x1) && !STATS.HWOC_ACK){STATS.HWOC_ACK = TRUE;BUZZER_OFF}
-	    if(STATS.COMMS == 1)
+	    if((ESC.ERROR & 0x2) && !STATS_SWOC_ACK){SET_STATS_SWOC_ACK;}
+	    if((ESC.ERROR & 0x1) && !STATS_HWOC_ACK){SET_STATS_HWOC_ACK;BUZZER_OFF}
+	    if(STATS_COMMS == 1)
 	    {
 	      if((LPC_CAN1->GSR & (1 << 3)))				// Check Global Status Reg
 	      {
@@ -336,7 +328,7 @@ void menu_input_check (void)
 	        MsgBuf_TX1.DataB = 0x0;
 	        CAN1_SendMessage( &MsgBuf_TX1 );
 	      }
-	      STATS.COMMS = 0;
+	      CLR_STATS_COMMS;
 	    }
 
 	    lcd_clear();
@@ -354,9 +346,9 @@ void menu_input_check (void)
 	    menu_dec(&menu.menu_pos, menu.menu_items);
 	    buzzer(2);
 	    if(menu.menu_pos==0){buzzer(10);}
-	    if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK){STATS.SWOC_ACK = TRUE;}
-	    if((ESC.ERROR & 0x1) && !STATS.HWOC_ACK){STATS.HWOC_ACK = TRUE;BUZZER_OFF}
-	    if(STATS.COMMS == 1)
+	    if((ESC.ERROR & 0x2) && !STATS_SWOC_ACK){SET_STATS_SWOC_ACK;}
+	    if((ESC.ERROR & 0x1) && !STATS_HWOC_ACK){SET_STATS_HWOC_ACK;BUZZER_OFF}
+	    if(STATS_COMMS == 1)
 	    {
 	      if((LPC_CAN1->GSR & (1 << 3)))				// Check Global Status Reg
 	      {
@@ -366,7 +358,7 @@ void menu_input_check (void)
 	        MsgBuf_TX1.DataB = 0x0;
 	        CAN1_SendMessage( &MsgBuf_TX1 );
 	      }
-	      STATS.COMMS = 0;
+	      CLR_STATS_COMMS;
 	    }
 
 	    lcd_clear();
@@ -376,8 +368,8 @@ void menu_input_check (void)
 	  else{SET_MENU_LEFT_DWN;}
 	}
 
-	if(SWITCH_IO & 0x4)	{STATS.DRIVE_MODE = SPORTS;STATS.RAMP_SPEED = SPORTS_RAMP_SPEED;}
-	else				{STATS.DRIVE_MODE = ECONOMY;STATS.RAMP_SPEED = ECONOMY_RAMP_SPEED;}
+	if(SWITCH_IO & 0x4)	{SET_STATS_DRV_MODE;STATS.RAMP_SPEED = SPORTS_RAMP_SPEED;}
+	else				{CLR_STATS_DRV_MODE;STATS.RAMP_SPEED = ECONOMY_RAMP_SPEED;}
 }
 
 /******************************************************************************
@@ -394,7 +386,7 @@ void menu_input_check (void)
 ******************************************************************************/
 int menu_fault_check (void)
 {
-	if(ESC.ERROR || (BMU.Status & 0xD37) || STATS.CAN_BUS){return 2;}
+	if(ESC.ERROR || (BMU.Status & 0xD37)){return 2;}
 	if(MPPT1.flags & 0x28 || MPPT2.flags & 0x28 || (BMU.Status & 0x1288)){return 1;}
 	return 0;
 }
@@ -414,7 +406,7 @@ void menu_drive (void)
 	uint32_t ADC_B;
 
 	/// THROTTLE
-	if(!STATS.CR_ACT)
+	if(!STATS_CR_ACT)
 	{
 		ADC_A = (ADCRead(0) + ADCRead(0) + ADCRead(0) + ADCRead(0) + ADCRead(0) + ADCRead(0) + ADCRead(0) + ADCRead(0))/8;
 
@@ -425,7 +417,7 @@ void menu_drive (void)
 		if(!menu.driver && thr_pos > MAX_THR_DISP){thr_pos = MAX_THR_DISP;}
 		if(thr_pos > 1000){thr_pos = 1000;}
 	}
-	else if(!FORWARD){STATS.CR_ACT = OFF;STATS.CR_STS = OFF; STATS.CRUISE_SPEED = 0;} // Must be in forward to use cruise
+	else if(!FORWARD){CLR_STATS_CR_ACT;CLR_STATS_CR_STS; STATS.CRUISE_SPEED = 0;} // Must be in forward to use cruise
 
 	/// REGEN
 	ADC_B = (ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1) + ADCRead(1))/8;
@@ -438,11 +430,11 @@ void menu_drive (void)
 	if(rgn_pos < 0){rgn_pos = 0;}
 	if(rgn_pos > 1000){rgn_pos = 1000;}
 	rgn_pos *= MAX_REGEN / 1000.0;
-	if(rgn_pos){STATS.CR_ACT = OFF;}
+	if(rgn_pos){CLR_STATS_CR_ACT;}
 
 	// MinorSec: DRIVE LOGIC
 	if(!MECH_BRAKE && (FORWARD || REVERSE)){
-		if(STATS.CR_ACT && FORWARD)																							{DRIVE.Current = 1.0; DRIVE.Speed_RPM = STATS.CRUISE_SPEED / ((60 * 3.14 * WHEEL_D_M) / 1000.0);}
+		if(STATS_CR_ACT && FORWARD)																							{DRIVE.Current = 1.0; DRIVE.Speed_RPM = STATS.CRUISE_SPEED / ((60 * 3.14 * WHEEL_D_M) / 1000.0);}
 		else if(!thr_pos && !rgn_pos)																						{DRIVE.Speed_RPM = 0; 		DRIVE.Current = 0;}
 		else if(rgn_pos && DRIVE.Current > 0)																				{							DRIVE.Current = 0;}
 		else if(rgn_pos && (((DRIVE.Current * 1000) + REGEN_RAMP_SPEED) < rgn_pos))											{DRIVE.Speed_RPM = 0; 		DRIVE.Current -= (REGEN_RAMP_SPEED / 1000.0);}
@@ -453,7 +445,7 @@ void menu_drive (void)
 		else if(REVERSE && ESC.Velocity_KMH < 1.0 && !rgn_pos && (((DRIVE.Current * 1000) + STATS.RAMP_SPEED) < thr_pos))	{DRIVE.Speed_RPM = -200; 	DRIVE.Current += (STATS.RAMP_SPEED / 1000.0);}
 		else if(REVERSE && ESC.Velocity_KMH < 1.0 && !rgn_pos)																{DRIVE.Speed_RPM = -200; 	DRIVE.Current = (thr_pos / 1000.0);}
 		else{DRIVE.Speed_RPM = 0; DRIVE.Current = 0;}}
-	else{DRIVE.Speed_RPM = 0; DRIVE.Current = 0;STATS.CR_ACT = 0;}
+	else{DRIVE.Speed_RPM = 0; DRIVE.Current = 0;CLR_STATS_CR_ACT;}
 }
 
 /******************************************************************************
@@ -472,15 +464,15 @@ void menu_lights (void)
 
 	if(!rgn_pos)
 	{
-		if(REVERSE)		{REVERSE_ON;NEUTRAL_OFF;REGEN_OFF;DRIVE_OFF;STATS.IGNITION = 0x21;}
-		else if(FORWARD){REVERSE_OFF;NEUTRAL_OFF;REGEN_OFF;DRIVE_ON;STATS.IGNITION = 0x28;}
-		else			{REVERSE_OFF;NEUTRAL_ON;REGEN_OFF;DRIVE_OFF;STATS.IGNITION = 0x22;}
+		if(REVERSE)		{REVERSE_ON;NEUTRAL_OFF;REGEN_OFF;DRIVE_OFF;}
+		else if(FORWARD){REVERSE_OFF;NEUTRAL_OFF;REGEN_OFF;DRIVE_ON;}
+		else			{REVERSE_OFF;NEUTRAL_ON;REGEN_OFF;DRIVE_OFF;}
 	}
 	else
 	{
-		if(REVERSE)		{REVERSE_ON;NEUTRAL_OFF;REGEN_ON;DRIVE_OFF;STATS.IGNITION = 0x25;}
-		else if(FORWARD){REVERSE_OFF;NEUTRAL_OFF;REGEN_ON;DRIVE_ON;STATS.IGNITION = 0x2C;}
-		else			{REVERSE_OFF;NEUTRAL_ON;REGEN_OFF;DRIVE_OFF;STATS.IGNITION = 0x22;}
+		if(REVERSE)		{REVERSE_ON;NEUTRAL_OFF;REGEN_ON;DRIVE_OFF;}
+		else if(FORWARD){REVERSE_OFF;NEUTRAL_OFF;REGEN_ON;DRIVE_ON;}
+		else			{REVERSE_OFF;NEUTRAL_ON;REGEN_OFF;DRIVE_OFF;}
 	}
 
 	if((SWITCH_IO & 0x8) && (CLOCK.blink)){BLINKER_L_ON}
@@ -491,8 +483,8 @@ void menu_lights (void)
 	if(SWITCH_IO & 0x4)	{SPORTS_ON;ECO_OFF;}
 	else				{SPORTS_OFF;ECO_ON;}
 
-	if(STATS.FAULT == 1){FAULT_ON}
-	else if(STATS.FAULT == 2 && (CLOCK.blink)){FAULT_ON}
+	if(STATS_FAULT == 1){FAULT_ON}
+	else if(STATS_FAULT == 2 && (CLOCK.blink)){FAULT_ON}
 	else{FAULT_OFF}
 }
 
@@ -521,6 +513,9 @@ void menu_can_handler (void)
 			lcd_clear();
 			char rot1[20], rot2[20];
 
+			DRIVE.Current = 0;
+			DRIVE.Speed_RPM = 0;
+
 			if(menu.driver == 3)
 			{
 				_lcd_putTitle("-GOT DICK-");
@@ -542,6 +537,7 @@ void menu_can_handler (void)
 			{
 				if(menu.driver == 3)
 				{
+					_lcd_putTitle("-GOT DICK-");
 					_buffer_rotate_right(rot1, 20);
 					_buffer_rotate_right(rot2, 20);
 					lcd_putstring_custom(2,0, rot1, 20);
@@ -632,7 +628,7 @@ void esc_reset (void)
 }
 
 /******************************************************************************
-** Function name:		recallVariables
+** Function name:		load_persistent
 **
 ** Description:			Restores persistent variables from EEPROM
 **
@@ -640,17 +636,12 @@ void esc_reset (void)
 ** Returned value:		None
 **
 ******************************************************************************/
-void recallVariables (void)
+void load_persistent (void)
 {
 	// Restore Non-Volatile Data
-	STATS.BUZZER = EE_Read(AddressBUZZ) & 0b1;
+	STATS.flags |= (EE_Read(AddressBUZZ) & 0b1) << 1;
 	STATS.ODOMETER = conv_uint_float(EE_Read(AddressODO));
 	STATS.TR_ODOMETER = conv_uint_float(EE_Read(AddressODOTR));
-	STATS.MAX_SPEED = 0;
-	STATS.RAMP_SPEED = 5;
-	STATS.CRUISE_SPEED = 0;
-	STATS.CR_ACT = 0;
-	STATS.CR_STS = 0;
 
 	BMU.WattHrs = conv_uint_float(EE_Read(AddressBMUWHR));
 	MPPT1.WattHrs = conv_uint_float(EE_Read(AddressMPPT1WHR));
@@ -863,6 +854,83 @@ float iirFILTER_float (float _data_in, float _cur_data, uint8_t _gain)
 {return (((_gain-1)*_cur_data)+_data_in)/_gain;}
 
 /******************************************************************************
+** Function name:		load_nonpersistent
+**
+** Description:			Loads non-persistent default values
+**
+** Parameters:			None
+** Returned value:		None
+**
+******************************************************************************/
+void load_nonpersistent(void)
+{
+	CLOCK.T_D = 0;
+	CLOCK.T_H = 0;
+	CLOCK.T_M = 0;
+	CLOCK.T_S = 0;
+	CLOCK.T_mS = 0;
+	CLOCK.blink = 0;
+
+	DRIVE.Current = 0;
+	DRIVE.Speed_RPM = 0;
+
+	STATS.flags = 0;
+	STATS.errors = 0;
+	STATS.MAX_SPEED = 0;
+	STATS.CRUISE_SPEED = 0;
+	STATS.RAMP_SPEED = 5;
+
+	BMU.Battery_I = 0;
+	BMU.Battery_V = 0;
+	BMU.CAN_ID = BMU_BASE;
+	BMU.Status = 0;
+	BMU.MAX_Battery_I = 0;
+	BMU.MAX_Battery_V = 0;
+	BMU.MAX_Watts = 0;
+	BMU.Max_Cell_Tmp = 0;
+	BMU.Max_Cell_V = 0;
+	BMU.Min_Cell_Tmp = 0;
+	BMU.Min_Cell_V = 0;
+
+	ESC.Bus_I = 0;
+	ESC.Bus_V = 0;
+	ESC.CAN_ID = ESC_BASE;
+	ESC.ERROR = 0;
+	ESC.MAX_Bus_I = 0;
+	ESC.MAX_Bus_V = 0;
+	ESC.MAX_Watts = 0;
+	ESC.Velocity_KMH = 0;
+	ESC.WattHrs = 0;
+	ESC.Watts = 0;
+
+	MPPT1.CAN_ID = MPPT1_BASE;
+	MPPT1.IIn = 0;
+	MPPT1.MAX_IIn = 0;
+	MPPT1.MAX_Tmp = 0;
+	MPPT1.MAX_VIn = 0;
+	MPPT1.MAX_VOut = 0;
+	MPPT1.MAX_Watts = 0;
+	MPPT1.Tmp = 0;
+	MPPT1.VIn = 0;
+	MPPT1.VOut = 0;
+	MPPT1.Watts = 0;
+	MPPT1.flags = 0;
+
+	MPPT2.CAN_ID = MPPT2_BASE;
+	MPPT2.IIn = 0;
+	MPPT2.MAX_IIn = 0;
+	MPPT2.MAX_Tmp = 0;
+	MPPT2.MAX_VIn = 0;
+	MPPT2.MAX_VOut = 0;
+	MPPT2.MAX_Watts = 0;
+	MPPT2.Tmp = 0;
+	MPPT2.VIn = 0;
+	MPPT2.VOut = 0;
+	MPPT2.Watts = 0;
+	MPPT2.flags = 0;
+}
+
+/******************************************************************************
 ** Function name:		init_GPIO
 **
 ** Description:			Configures pins to be used for GPIO
@@ -949,7 +1017,7 @@ void init_GPIO (void)
 ******************************************************************************/
 void buzzer (uint32_t val)
 {
-	if(STATS.BUZZER)
+	if(STATS_BUZZER)
 	{
 		STATS.BUZ_TIM = val;
 		BUZZER_ON;
@@ -996,7 +1064,8 @@ int main (void)
 
 	I2C1Init();
 
-	recallVariables();
+	load_nonpersistent();
+	load_persistent();
 
 	SysTick_Config(SystemCoreClock / 100);		// 10mS Systicker.
 
@@ -1009,43 +1078,41 @@ int main (void)
 
 	BOD_Init();
 
-
 	lcd_display_driver();
 
 	lcd_display_intro();
 
 	menu_init();
 
+	if(FORWARD || REVERSE){lcd_display_errOnStart();}
+
 	while (FORWARD || REVERSE)
 	{
-		lcd_display_errOnStart();
 		buzzer(70);
-
-		lcd_clear();
-		delayMs(1, 300);
+		delayMs(1, 1000);
 	}
 
 	while(1) { // Exiting this loop ends the program
-		if ((ESC.ERROR & 0x1) && !STATS.HWOC_ACK) // on unacknowledged HWOC error, show error screen
+		if ((ESC.ERROR & 0x1) && !STATS_HWOC_ACK) // on unacknowledged HWOC error, show error screen
 		{menu.errors[1]();}
-		else if((ESC.ERROR & 0x2) && !STATS.SWOC_ACK && !AUTO_SWOC && menu.driver) // show SWOC screen when auto reset off and not on display mode and error not acknowledged
+		else if((ESC.ERROR & 0x2) && !STATS_SWOC_ACK && !AUTO_SWOC && menu.driver) // show SWOC screen when auto reset off and not on display mode and error not acknowledged
 		{menu.errors[0]();}
-		else if(STATS.COMMS)
+		else if(STATS_COMMS)
 		{menu.errors[2]();}
-		else if(STATS.CAN_BUS)
-		{menu.errors[3]();}
 		else
 		{
-			if(STATS.SWOC_ACK && !(ESC.ERROR & 0x2)) // if acknowledged previous error is reset
-			{STATS.SWOC_ACK = FALSE;}
-			if(STATS.HWOC_ACK && !(ESC.ERROR & 0x1)) // if acknowledged previous error is reset
-			{STATS.HWOC_ACK = FALSE;}
+			if(STATS_SWOC_ACK && !(ESC.ERROR & 0x2)) // if acknowledged previous error is reset
+			{CLR_STATS_SWOC_ACK;}
+			if(STATS_HWOC_ACK && !(ESC.ERROR & 0x1)) // if acknowledged previous error is reset
+			{CLR_STATS_HWOC_ACK;}
+
+			menu.counter++;
 
 			menu.menus[menu.menu_pos]();
 		}
 		menu_mppt_poll();
 		menu_input_check();
-		if((STATS.FAULT = menu_fault_check()) != 2){menu_drive();} // no drive on fault code 2
+		if((STATS.errors |= (menu_fault_check() << 3)) != (0x2 << 3)){menu_drive();} // no drive on fault code 2
 		menu_lights();
 		menu_can_handler();
 		menu_calc();

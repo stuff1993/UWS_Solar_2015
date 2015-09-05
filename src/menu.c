@@ -223,10 +223,10 @@ void lcd_display_home_orig (void)
 
 	_lcd_putTitle("-HOME-");
 
-	if(STATS.DRIVE_MODE == SPORTS)	{lcd_putstring(1,0, "DRIVE MODE:  SPORTS ");}
+	if(STATS_DRV_MODE == SPORTS)	{lcd_putstring(1,0, "DRIVE MODE:  SPORTS ");}
 	else							{lcd_putstring(1,0, "DRIVE MODE: ECONOMY ");}
 
-	if(STATS.CR_ACT)				{sprintf(buffer, "CRUISE:    %3.1f%%   ", ESC.Bus_I * (100 / MAX_ESC_CUR));} // hard coded to 65A = 100% (100 / 65)
+	if(STATS_CR_ACT)				{sprintf(buffer, "CRUISE:    %3.1f%%   ", ESC.Bus_I * (100 / MAX_ESC_CUR));} // hard coded to 65A = 100% (100 / 65)
 	else if(FORWARD && !rgn_pos)	{sprintf(buffer, "DRIVE:     %3d.%d%%   ", thr_pos/10,thr_pos%10);}
 	else if(REVERSE && !rgn_pos)	{sprintf(buffer, "REVERSE:   %3d.%d%%   ", thr_pos/10,thr_pos%10);}
 	else if(rgn_pos)				{sprintf(buffer, "REGEN:     %3d.%d%%   ", rgn_pos/10,rgn_pos%10);}
@@ -259,10 +259,10 @@ void lcd_display_home (void)
 	_lcd_putTitle("-HOME-");
 
 	sprintf(buffer, "MPPT: %3luW Drv: ", MPPT1.Watts + MPPT2.Watts);
-	if(STATS.DRIVE_MODE == SPORTS){sprintf(buffer + 16, "S");}
+	if(STATS_DRV_MODE == SPORTS){sprintf(buffer + 16, "S");}
 	else{sprintf(buffer + 16, "E");}
 
-	if(STATS.CR_ACT){sprintf(buffer + 17, "C  ");}
+	if(STATS_CR_ACT){sprintf(buffer + 17, "C  ");}
 	else if(FORWARD){sprintf(buffer + 17, "D  ");}
 	else if(REVERSE){sprintf(buffer + 17, "R  ");}
 	else{sprintf(buffer + 17, "N  ");}
@@ -272,7 +272,7 @@ void lcd_display_home (void)
 	lcd_putstring(1,0, buffer);
 
 	sprintf(buffer, "Bat:  %3luW Thr:", BMU.Watts);
-	if(STATS.CR_ACT){sprintf(buffer + 15, "%3.0f%% ", ESC.Bus_I * (100 / MAX_ESC_CUR));}
+	if(STATS_CR_ACT){sprintf(buffer + 15, "%3.0f%% ", ESC.Bus_I * (100 / MAX_ESC_CUR));}
 	else if(rgn_pos){sprintf(buffer + 11, "Brk:%3d%% ", rgn_pos/10);}
 	else if(FORWARD){sprintf(buffer + 15, "%3d%% ", thr_pos/10);}
 	else if(REVERSE){sprintf(buffer + 15, "%3d%% ", thr_pos/10);}
@@ -345,7 +345,7 @@ void lcd_display_cruise (void)
 	{
 		char buffer[20];
 
-		if(STATS.CR_STS && STATS.CR_ACT)
+		if(STATS_CR_STS && STATS_CR_ACT)
 		{
 			lcd_putstring(1,0, " STS:  ON  ACT:  ON ");
 
@@ -356,13 +356,13 @@ void lcd_display_cruise (void)
 			lcd_putstring(3,0, buffer);
 
 			// Button presses
-			if(btn_release_select())								{STATS.CR_ACT = OFF;}
+			if(btn_release_select())								{CLR_STATS_CR_ACT;}
 
 			if(btn_release_increment())								{STATS.CRUISE_SPEED += 1;}
 
 			if((STATS.CRUISE_SPEED > 1) && btn_release_decrement())	{STATS.CRUISE_SPEED -= 1;}
 		}
-		else if(STATS.CR_STS && !STATS.CR_ACT)
+		else if(STATS_CR_STS && !STATS_CR_ACT)
 		{
 			lcd_putstring(1,0, " STS:  ON  ACT: OFF ");
 
@@ -372,21 +372,21 @@ void lcd_display_cruise (void)
 			lcd_putstring(3,0, EROW);
 
 			// Button presses
-			if(btn_release_select())								{STATS.CR_STS = OFF;STATS.CRUISE_SPEED = 0;}
+			if(btn_release_select())								{CLR_STATS_CR_STS;STATS.CRUISE_SPEED = 0;}
 
-			if((STATS.CRUISE_SPEED > 1) && btn_release_increment())	{STATS.CR_ACT = ON;}
+			if((STATS.CRUISE_SPEED > 1) && btn_release_increment())	{SET_STATS_CR_ACT;}
 
-			if(btn_release_decrement())								{STATS.CRUISE_SPEED = ESC.Velocity_KMH;STATS.CR_ACT = ON;}
+			if(btn_release_decrement())								{STATS.CRUISE_SPEED = ESC.Velocity_KMH;SET_STATS_CR_ACT;}
 
 		}
-		else if(STATS.CR_ACT && !STATS.CR_STS) // Should never trip, but just in case
+		else if(STATS_CR_ACT && !STATS_CR_STS) // Should never trip, but just in case
 		{
 			lcd_putstring(1,0, " STS: OFF  ACT:  ON ");
 			lcd_putstring(2,0, "    CRUISE ERROR    ");
 			lcd_putstring(3,0, "     RESETTING      ");
 
-			STATS.CR_ACT = OFF;
-			STATS.CR_STS = OFF;
+			CLR_STATS_CR_ACT;
+			CLR_STATS_CR_STS;
 			STATS.CRUISE_SPEED = 0;
 		}
 		else
@@ -399,7 +399,7 @@ void lcd_display_cruise (void)
 			lcd_putstring(3,0, EROW);
 
 			// Button presses
-			if(btn_release_select()){STATS.CRUISE_SPEED = 0;STATS.CR_STS = ON;}
+			if(btn_release_select()){STATS.CRUISE_SPEED = 0;SET_STATS_CR_STS;}
 		}
 	}
 	else // no cruise in reverse
@@ -408,8 +408,8 @@ void lcd_display_cruise (void)
 		lcd_putstring(2,0, "  REVERSE ENGAGED!  ");
 		lcd_putstring(3,0, EROW);
 
-		STATS.CR_STS = OFF;
-		STATS.CR_ACT = OFF;
+		CLR_STATS_CR_ACT;
+		CLR_STATS_CR_STS;
 		STATS.CRUISE_SPEED = 0;
 	}
 }
@@ -764,12 +764,12 @@ void lcd_display_options (void)
 			menu.submenu_pos = 0;
 			/* no break */
 		case 0:
-			if(STATS.BUZZER){lcd_putstring(2,0, ">> BUZZER: ON       ");}
+			if(STATS_BUZZER){lcd_putstring(2,0, ">> BUZZER: ON       ");}
 			else{lcd_putstring(2,0, ">> BUZZER: OFF      ");}
 			len = sprintf(buffer, "   DRIVER: %d", menu.driver);
 			break;
 		case 1:
-			if(STATS.BUZZER){lcd_putstring(2,0, "   BUZZER: ON       ");}
+			if(STATS_BUZZER){lcd_putstring(2,0, "   BUZZER: ON       ");}
 			else{lcd_putstring(2,0, "   BUZZER: OFF      ");}
 			len = sprintf(buffer, ">> DRIVER: %d", menu.driver);
 			break;
@@ -777,7 +777,7 @@ void lcd_display_options (void)
 	}
 	else
 	{
-		if(STATS.BUZZER){lcd_putstring(2,0, "   BUZZER: ON       ");}
+		if(STATS_BUZZER){lcd_putstring(2,0, "   BUZZER: ON       ");}
 		else{lcd_putstring(2,0, "   BUZZER: OFF      ");}
 		len = sprintf(buffer, "   DRIVER: %d", menu.driver);
 	}
@@ -792,7 +792,7 @@ void lcd_display_options (void)
 			switch(menu.submenu_pos)
 			{
 			case 0:
-				EE_Write(AddressBUZZ, STATS.BUZZER);
+				EE_Write(AddressBUZZ, STATS_BUZZER);
 				break;
 			case 1:
 				menu_init();
@@ -810,7 +810,8 @@ void lcd_display_options (void)
 			switch(menu.submenu_pos)
 			{
 			case 0:
-				STATS.BUZZER ^= 0b1;
+				if(STATS_BUZZER){CLR_STATS_BUZZER;}
+				else{SET_STATS_BUZZER;}
 				break;
 			case 1:
 				menu.driver = (menu.driver + 1) % 4;
@@ -829,7 +830,8 @@ void lcd_display_options (void)
 			switch(menu.submenu_pos)
 			{
 			case 0:
-				STATS.BUZZER ^= 0b1;
+				if(STATS_BUZZER){CLR_STATS_BUZZER;}
+				else{SET_STATS_BUZZER;}
 				break;
 			case 1:
 				menu.driver = (menu.driver + 3) % 4;
@@ -993,7 +995,7 @@ void lcd_display_SWOC (void) // errors[0]
 		{
 			CLR_MENU_DEC_DWN;
 			CLR_MENU_INC_DWN;
-			STATS.SWOC_ACK = TRUE;
+			SET_STATS_SWOC_ACK;
 		}
 		else if(INCREMENT && !DECREMENT){SET_MENU_INC_DWN;}
 		else if(!INCREMENT && DECREMENT){SET_MENU_DEC_DWN;}
@@ -1041,7 +1043,7 @@ void lcd_display_HWOC (void) // errors[1]
 		{
 			CLR_MENU_DEC_DWN;
 			CLR_MENU_INC_DWN;
-			STATS.HWOC_ACK = TRUE;
+			SET_STATS_HWOC_ACK;
 		}
 		else if(INCREMENT && !DECREMENT){SET_MENU_INC_DWN;}
 		else if(!INCREMENT && DECREMENT){SET_MENU_DEC_DWN;}
@@ -1079,7 +1081,7 @@ void lcd_display_COMMS (void) // errors[2]
 				MsgBuf_TX1.DataB = 0x0;
 				CAN1_SendMessage( &MsgBuf_TX1 );
 			}
-			STATS.COMMS = 0;
+			CLR_STATS_COMMS;
 		}
 		else{SET_MENU_SEL_DWN;}
 	}
@@ -1098,7 +1100,7 @@ void lcd_display_COMMS (void) // errors[2]
 				MsgBuf_TX1.DataB = 0x0;
 				CAN1_SendMessage( &MsgBuf_TX1 );
 			}
-			STATS.COMMS = 0;
+			CLR_STATS_COMMS;
 		}
 		else if(INCREMENT && !DECREMENT){SET_MENU_INC_DWN;}
 		else if(!INCREMENT && DECREMENT){SET_MENU_DEC_DWN;}

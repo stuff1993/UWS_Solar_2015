@@ -11,10 +11,6 @@
 #define	MAX_MENU_ITEMS 15
 #define ERROR_ITEMS 4
 
-#ifndef FLAG
-#define FLAG(x) unsigned int x :1;
-#endif // FLAG(x)
-
 #define EROW 	"                    "
 
 struct MENUS
@@ -27,6 +23,7 @@ struct MENUS
 	uint8_t submenu_items;
 	uint8_t submenu_pos;
 	uint8_t flags;
+	uint32_t counter;
 }menu;
 
 #define MENU_SELECTED       ((menu.flags & 0x01) >> 0)
