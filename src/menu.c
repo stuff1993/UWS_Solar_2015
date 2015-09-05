@@ -1476,7 +1476,6 @@ void menu_init (void)
 
 	switch (menu.driver)
 	{
-	default:
 	case 0: // DISPLAY
 		menu.menu_items = 11;
 		menu.menus[0] = lcd_display_home;
@@ -1491,6 +1490,7 @@ void menu_init (void)
 		menu.menus[9] = lcd_display_odometer;
 		menu.menus[10] = lcd_display_info;
 		break;
+	default:
 	case 1: // TEST
 		menu.menu_items = 15;
 		menu.menus[0] = lcd_display_home;
