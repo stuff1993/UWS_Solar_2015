@@ -16,6 +16,15 @@
 
 #define WHEEL_D_M (0.557) // metres
 
+#define MAX_RGN_DZ			0.05	// V at pin
+#define MIN_RGN_DZ			0.05
+#define MAX_THR_DZ			0.05
+#define MIN_THR_DZ			0.05
+#define LOW_PAD_V			0.25
+#define MID_PAD_V			1.25
+#define HGH_PAD_V			2.25
+#define ADC_POINTS_PER_V	1240.909091
+
 #define ECONOMY_RAMP_SPEED	5
 #define SPORTS_RAMP_SPEED	30
 #define REGEN_RAMP_SPEED	30

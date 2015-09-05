@@ -68,65 +68,163 @@ void lcd_display_driver (void)
 	CLR_MENU_SELECTED;
 
 	_lcd_putTitle("-DRIVER-");
-	lcd_putstring(1,0, "   DISPLAY    TEST  ");
-	lcd_putstring(2,0, "   RACE 1     RACE 2");
+	lcd_putstring(1,0, "   D      T1     T2 "); //	0	1	2
+	lcd_putstring(2,0, "   R1     R2     R3 ");	//	3	4	5
+	lcd_putstring(2,0, "   R4     R5     R6 ");	//	6	7	8
 
 	sprintf(sel, ">>");
 	sprintf(blank, "  ");
 
 	while(menu.driver == 255)
 	{
+		_lcd_putTitle("-DRIVER-");
 		switch(menu.submenu_pos)
 		{
 		default:
 		case 0:
 			lcd_putstring(1,0, sel);
-			lcd_putstring(1,11, blank);
+			lcd_putstring(1,6, blank);
+			lcd_putstring(1,13, blank);
 			lcd_putstring(2,0, blank);
 			lcd_putstring(2,11, blank);
+			lcd_putstring(2,13, blank);
+			lcd_putstring(3,0, blank);
+			lcd_putstring(3,11, blank);
+			lcd_putstring(3,13, blank);
 			break;
 		case 1:
 			lcd_putstring(1,0, blank);
-			lcd_putstring(1,11, sel);
+			lcd_putstring(1,6, sel);
+			lcd_putstring(1,13, blank);
 			lcd_putstring(2,0, blank);
 			lcd_putstring(2,11, blank);
+			lcd_putstring(2,13, blank);
+			lcd_putstring(3,0, blank);
+			lcd_putstring(3,11, blank);
+			lcd_putstring(3,13, blank);
 			break;
 		case 2:
 			lcd_putstring(1,0, blank);
-			lcd_putstring(1,11, blank);
-			lcd_putstring(2,0, sel);
+			lcd_putstring(1,6, blank);
+			lcd_putstring(1,13, sel);
+			lcd_putstring(2,0, blank);
 			lcd_putstring(2,11, blank);
+			lcd_putstring(2,13, blank);
+			lcd_putstring(3,0, blank);
+			lcd_putstring(3,11, blank);
+			lcd_putstring(3,13, blank);
 			break;
 		case 3:
 			lcd_putstring(1,0, blank);
-			lcd_putstring(1,11, blank);
+			lcd_putstring(1,6, blank);
+			lcd_putstring(1,13, blank);
+			lcd_putstring(2,0, sel);
+			lcd_putstring(2,11, blank);
+			lcd_putstring(2,13, blank);
+			lcd_putstring(3,0, blank);
+			lcd_putstring(3,11, blank);
+			lcd_putstring(3,13, blank);
+			break;
+		case 4:
+			lcd_putstring(1,0, blank);
+			lcd_putstring(1,6, blank);
+			lcd_putstring(1,13, blank);
 			lcd_putstring(2,0, blank);
 			lcd_putstring(2,11, sel);
+			lcd_putstring(2,13, blank);
+			lcd_putstring(3,0, blank);
+			lcd_putstring(3,11, blank);
+			lcd_putstring(3,13, blank);
+			break;
+		case 5:
+			lcd_putstring(1,0, blank);
+			lcd_putstring(1,6, blank);
+			lcd_putstring(1,13, blank);
+			lcd_putstring(2,0, blank);
+			lcd_putstring(2,11, blank);
+			lcd_putstring(2,13, sel);
+			lcd_putstring(3,0, blank);
+			lcd_putstring(3,11, blank);
+			lcd_putstring(3,13, blank);
+			break;
+		case 6:
+			lcd_putstring(1,0, blank);
+			lcd_putstring(1,6, blank);
+			lcd_putstring(1,13, blank);
+			lcd_putstring(2,0, blank);
+			lcd_putstring(2,11, blank);
+			lcd_putstring(2,13, blank);
+			lcd_putstring(3,0, sel);
+			lcd_putstring(3,11, blank);
+			lcd_putstring(3,13, blank);
+			break;
+		case 7:
+			lcd_putstring(1,0, blank);
+			lcd_putstring(1,6, blank);
+			lcd_putstring(1,13, blank);
+			lcd_putstring(2,0, blank);
+			lcd_putstring(2,11, blank);
+			lcd_putstring(2,13, blank);
+			lcd_putstring(3,0, blank);
+			lcd_putstring(3,11, sel);
+			lcd_putstring(3,13, blank);
+			break;
+		case 8:
+			lcd_putstring(1,0, blank);
+			lcd_putstring(1,6, blank);
+			lcd_putstring(1,13, blank);
+			lcd_putstring(2,0, blank);
+			lcd_putstring(2,11, blank);
+			lcd_putstring(2,13, blank);
+			lcd_putstring(3,0, blank);
+			lcd_putstring(3,11, blank);
+			lcd_putstring(3,13, sel);
 			break;
 		}
 
 		if(btn_release_select()){menu.driver = menu.submenu_pos;}
 
-		if(INCREMENT || DECREMENT || MENU_INC_DWN || MENU_DEC_DWN)
+		if(INCREMENT || MENU_INC_DWN)
 		{
-			if((!INCREMENT && MENU_INC_DWN) || (!DECREMENT && MENU_DEC_DWN))
+			if(!INCREMENT && MENU_INC_DWN)
 			{
 				CLR_MENU_INC_DWN;
 				CLR_MENU_DEC_DWN;
-				menu.submenu_pos = (menu.submenu_pos + 2) % 4;	// (pos + width) % total
+				menu.submenu_pos = (menu.submenu_pos + 3) % 9;	// (pos + width) % total
 			}
-			else if(INCREMENT){SET_MENU_INC_DWN;}
+			else{SET_MENU_INC_DWN;}
+		}
+
+		if(DECREMENT || MENU_DEC_DWN)
+		{
+			if(!DECREMENT && MENU_DEC_DWN)
+			{
+				CLR_MENU_INC_DWN;
+				CLR_MENU_DEC_DWN;
+				menu.submenu_pos = (menu.submenu_pos + 6) % 9;	// (pos + total - width) % total
+			}
 			else{SET_MENU_DEC_DWN;}
 		}
-		else if(LEFT || RIGHT || MENU_LEFT_DWN || MENU_RIGHT_DWN)
+
+		if(LEFT || MENU_LEFT_DWN)
 		{
-			if((!LEFT && MENU_LEFT_DWN) || (!RIGHT && MENU_RIGHT_DWN))
+			if(!LEFT && MENU_LEFT_DWN)
 			{
 				CLR_MENU_LEFT_DWN;
 				CLR_MENU_RIGHT_DWN;
-				menu.submenu_pos = ((menu.submenu_pos / 2) * 2) + ((menu.submenu_pos + 1) % 2);	// ((pos / width) * width) + ((pos + 1) % width) -- Get row number, get item at start of row number, get next width looping on width
+				menu.submenu_pos = ((menu.submenu_pos / 3) * 3) + ((menu.submenu_pos + 1) % 3);	// ((pos / width) * width) + ((pos + 1) % width) -- Get row number, get item at start of row number, get next width looping on width
 			}
-			else if(LEFT){SET_MENU_LEFT_DWN;}
+			else{SET_MENU_LEFT_DWN;}
+		}
+
+		if(RIGHT || MENU_RIGHT_DWN)
+		{
+			if(!RIGHT && MENU_RIGHT_DWN)
+			{
+				CLR_MENU_LEFT_DWN;
+				CLR_MENU_RIGHT_DWN;
+				menu.submenu_pos = ((menu.submenu_pos / 3) * 3) + ((menu.submenu_pos + 2) % 3);	// ((pos / width) * width) + ((pos + width - 1) % width) -- Get row number, get item at start of row number, get next width looping on width
+			}
 			else{SET_MENU_RIGHT_DWN;}
 		}
 	}
@@ -814,7 +912,7 @@ void lcd_display_options (void)
 				else{SET_STATS_BUZZER;}
 				break;
 			case 1:
-				menu.driver = (menu.driver + 1) % 4;
+				menu.driver = (menu.driver + 1) % 9;
 				break;
 			default:
 				break;
@@ -834,7 +932,7 @@ void lcd_display_options (void)
 				else{SET_STATS_BUZZER;}
 				break;
 			case 1:
-				menu.driver = (menu.driver + 3) % 4;
+				menu.driver = (menu.driver + 8) % 9;
 				break;
 			default:
 				break;

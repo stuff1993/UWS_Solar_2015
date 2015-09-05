@@ -425,12 +425,12 @@ void menu_drive (void)
     // 2.5 -> 1.25 (1575) - 4.5 -> 2.25 (2812)
 	// 3.3 (4095)
 	// Calibrate endpoints and add deadband.
-	rgn_pos = (ADC_B < 1600) ? 0 : ADC_B - 1600; // Bottom Dead-zone calibration
-	rgn_pos = (rgn_pos * 9)/10;
-	if(rgn_pos < 0){rgn_pos = 0;}
+	rgn_pos = (ADC_B < ((MID_PAD_V + MIN_RGN_DZ) * ADC_POINTS_PER_V)) ? 0 : ADC_B - ((MID_PAD_V + MIN_RGN_DZ) * ADC_POINTS_PER_V);
+	rgn_pos = (rgn_pos * 1000) / (((HGH_PAD_V + MAX_RGN_DZ) - (MID_PAD_V + MIN_RGN_DZ)) * ADC_POINTS_PER_V);
 	if(rgn_pos > 1000){rgn_pos = 1000;}
 	rgn_pos *= MAX_REGEN / 1000.0;
 	if(rgn_pos){CLR_STATS_CR_ACT;}
+
 
 	// MinorSec: DRIVE LOGIC
 	if(!MECH_BRAKE && (FORWARD || REVERSE)){
