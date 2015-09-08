@@ -66,23 +66,10 @@ void lcd_clear( void)
 
 void lcd_gotoxy( unsigned int x, unsigned int y)
 {
-	if( x==0 )
-	{
-		lcd_command_write( 0x80 + y );		// command - position cursor at 0x00 (0x80 + 0x00 )
-	}
-	else if( x==1 )
-	{
-		lcd_command_write( 0xC0 + y );		// command - position cursor at 0x40 (0x80 + 0x00 )
-	}
-	else if( x==2 )
-	{
-		lcd_command_write( 0x80 + y + 20 );		// command - position cursor at 0x40 (0x80 + 0x00 )
-	}
-	else if( x==3 )
-	{
-		lcd_command_write( 0xC0 + y + 20 );		// command - position cursor at 0x40 (0x80 + 0x00 )
-	}
-
+	if( x==0 ){lcd_command_write( 0x80 + y );}		        // command - position cursor at 0x80 + y
+	else if( x==1 ){lcd_command_write( 0xC0 + y );}		    // command - position cursor at 0xC0 + y
+	else if( x==2 ){lcd_command_write( 0x80 + y + 20 );}  // command - position cursor at 0x94 + y
+	else if( x==3 ){lcd_command_write( 0xC0 + y + 20 );}	// command - position cursor at 0xD4 + y
 }
 
 void lcd_putchar( int c )
@@ -102,12 +89,7 @@ void lcd_putstring_custom( unsigned char line, unsigned char Pos, char *string, 
 
 	lcd_gotoxy( line, Pos );
 
-	while(_len--)
-	{
-		lcd_putchar( *string++ );
-
-
-	}
+	while(_len--){lcd_putchar( *string++ );}
 }
 
 void lcd_putstring( unsigned char line, unsigned char Pos, char *string )
@@ -116,12 +98,7 @@ void lcd_putstring( unsigned char line, unsigned char Pos, char *string )
 
 	lcd_gotoxy( line, Pos );
 
-	while(*string != '\0' && _len--)
-	{
-		lcd_putchar( *string++ );
-
-
-	}
+	while(*string != '\0' && _len--){lcd_putchar( *string++ );}
 }
 
 void setLCD( void )
@@ -152,7 +129,7 @@ void setLCD( void )
 	delayMs(1,2);
 	lcd_command_write(0b00000110);     /*   cursor move direction                       */
 	delayMs(1,2);
-	lcd_command_write(0b00001100) ;    /*   display on      */
+	lcd_command_write(0b00001100);    /*   display on      */
 	delayMs(1,2);
 	lcd_command_write(0b00101000);     /*   4-bit interface, two line, 5X7 dots.        */
 	delayMs(1,2);
@@ -212,10 +189,6 @@ void setLCD( void )
 	lcd_data_write(0b00000001);	delay10US(50);
 	lcd_data_write(0b00000010);	delay10US(50);
 	lcd_data_write(0b00011100);	delay10US(50);
-
-
-
-
 
 
 	lcd_gotoxy(0, 0);
