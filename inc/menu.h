@@ -27,31 +27,31 @@ struct MENUS
 }menu;
 
 #define MENU_SELECTED       ((menu.flags & 0x01) >> 0)
-#define MENU_DEC_DWN        ((menu.flags & 0x02) >> 1)
-#define MENU_INC_DWN        ((menu.flags & 0x04) >> 2)
-#define MENU_LEFT_DWN       ((menu.flags & 0x08) >> 3)
-#define MENU_RIGHT_DWN      ((menu.flags & 0x10) >> 4)
-#define MENU_SEL_DWN        ((menu.flags & 0x20) >> 5)
-#define MENU_UNUSED_1       ((menu.flags & 0x40) >> 6)
-#define MENU_UNUSED_2       ((menu.flags & 0x80) >> 7)
+#define MENU_UNUSED_1       ((menu.flags & 0x02) >> 1)
+#define MENU_UNUSED_2       ((menu.flags & 0x04) >> 2)
+#define MENU_UNUSED_3       ((menu.flags & 0x08) >> 3)
+#define MENU_UNUSED_4       ((menu.flags & 0x10) >> 4)
+#define MENU_UNUSED_5       ((menu.flags & 0x20) >> 5)
+#define MENU_UNUSED_6       ((menu.flags & 0x40) >> 6)
+#define MENU_UNUSED_7       ((menu.flags & 0x80) >> 7)
 
 #define SET_MENU_SELECTED   menu.flags |= 0x01;
-#define SET_MENU_DEC_DWN    menu.flags |= 0x02;
-#define SET_MENU_INC_DWN    menu.flags |= 0x04;
-#define SET_MENU_LEFT_DWN   menu.flags |= 0x08;
-#define SET_MENU_RIGHT_DWN  menu.flags |= 0x10;
-#define SET_MENU_SEL_DWN    menu.flags |= 0x20;
-#define SET_MENU_UNUSED_1   menu.flags |= 0x40;
-#define SET_MENU_UNUSED_2   menu.flags |= 0x80;
+#define SET_MENU_UNUSED_1   menu.flags |= 0x02;
+#define SET_MENU_UNUSED_2   menu.flags |= 0x04;
+#define SET_MENU_UNUSED_3   menu.flags |= 0x08;
+#define SET_MENU_UNUSED_4   menu.flags |= 0x10;
+#define SET_MENU_UNUSED_5   menu.flags |= 0x20;
+#define SET_MENU_UNUSED_6   menu.flags |= 0x40;
+#define SET_MENU_UNUSED_7   menu.flags |= 0x80;
 
 #define CLR_MENU_SELECTED   menu.flags &= 0xFE;
-#define CLR_MENU_DEC_DWN    menu.flags &= 0xFD;
-#define CLR_MENU_INC_DWN    menu.flags &= 0xFB;
-#define CLR_MENU_LEFT_DWN   menu.flags &= 0xF7;
-#define CLR_MENU_RIGHT_DWN  menu.flags &= 0xEF;
-#define CLR_MENU_SEL_DWN    menu.flags &= 0xDF;
-#define CLR_MENU_UNUSED_1   menu.flags &= 0xBF;
-#define CLR_MENU_UNUSED_2   menu.flags &= 0x7F;
+#define CLR_MENU_UNUSED_1   menu.flags &= 0xFD;
+#define CLR_MENU_UNUSED_2   menu.flags &= 0xFB;
+#define CLR_MENU_UNUSED_3   menu.flags &= 0xF7;
+#define CLR_MENU_UNUSED_4   menu.flags &= 0xEF;
+#define CLR_MENU_UNUSED_5   menu.flags &= 0xDF;
+#define CLR_MENU_UNUSED_6   menu.flags &= 0xBF;
+#define CLR_MENU_UNUSED_7   menu.flags &= 0x7F;
 
 // startup screens
 void lcd_display_errOnStart(void);

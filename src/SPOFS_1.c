@@ -24,6 +24,7 @@
 #include "i2c.h"
 #include "struct.h"
 #include "dash.h"
+#include "inputs.h"
 #include "menu.h"
 #include "can.h"
 
@@ -296,7 +297,7 @@ void mppt_data_extract (MPPT *_MPPT, fakeMPPTFRAME *_fkMPPT)
 void menu_input_check (void)
 {
   unsigned char OLD_IO = SWITCH_IO;
-  uint8_t btn_ret;
+  uint8_t btn_ret = 0;
 
   SWITCH_IO = 0;
   SWITCH_IO |= (FORWARD << 0);
@@ -310,6 +311,11 @@ void menu_input_check (void)
   if(btn_ret = btn_release_left_right())
   {
     buzzer(2);
+
+    if(btn_ret = 3)     {menu.menu_pos = 1;}
+    else if(btn_ret = 1){menu_dec(&menu.menu_pos, menu.menu_items);}
+    else if(btn_ret = 2){menu_inc(&menu.menu_pos, menu.menu_items);}
+
     if(menu.menu_pos==0){buzzer(10);}
     if((ESC.ERROR & 0x2) && !STATS_SWOC_ACK){SET_STATS_SWOC_ACK;}
     if((ESC.ERROR & 0x1) && !STATS_HWOC_ACK){SET_STATS_HWOC_ACK;BUZZER_OFF}
@@ -330,10 +336,6 @@ void menu_input_check (void)
     menu.flags = 0;
     menu.submenu_pos = 0;
   }
-
-  if(btn_ret = 1)     {menu.menu_pos = 1;}
-  else if(btn_ret = 2){menu_dec(&menu.menu_pos, menu.menu_items);}
-  else if(btn_ret = 4){menu_inc(&menu.menu_pos, menu.menu_items);}
 
   if(SWITCH_IO & 0x4)	{SET_STATS_DRV_MODE;STATS.RAMP_SPEED = SPORTS_RAMP_SPEED;}
   else			          {CLR_STATS_DRV_MODE;STATS.RAMP_SPEED = ECONOMY_RAMP_SPEED;}
