@@ -308,13 +308,13 @@ void menu_input_check (void)
 
   if(OLD_IO != SWITCH_IO){buzzer(50);}	// BEEP if toggle position has changed.
 
-  if(btn_ret = btn_release_left_right())
+  if((btn_ret = btn_release_left_right()))
   {
     buzzer(2);
 
-    if(btn_ret = 3)     {menu.menu_pos = 1;}
-    else if(btn_ret = 1){menu_dec(&menu.menu_pos, menu.menu_items);}
-    else if(btn_ret = 2){menu_inc(&menu.menu_pos, menu.menu_items);}
+    if(btn_ret == 3)     {menu.menu_pos = 1;}
+    else if(btn_ret == 1){menu_dec(&menu.menu_pos, menu.menu_items);}
+    else if(btn_ret == 2){menu_inc(&menu.menu_pos, menu.menu_items);}
 
     if(menu.menu_pos==0){buzzer(10);}
     if((ESC.ERROR & 0x2) && !STATS_SWOC_ACK){SET_STATS_SWOC_ACK;}
@@ -333,7 +333,7 @@ void menu_input_check (void)
     }
 
     lcd_clear();
-    menu.flags = 0;
+    inputs.input_dwn = 0;
     menu.submenu_pos = 0;
   }
 
@@ -355,7 +355,7 @@ void menu_input_check (void)
  ******************************************************************************/
 int menu_fault_check (void)
 {
-  if(ESC.ERROR || (BMU.Status & 0xD37)){return 2;}
+  if(ESC.ERROR || (BMU.Status & 0xD37)){DRIVE.Current = 0;DRIVE.Speed_RPM = 0;return 2;}
   if(MPPT1.flags & 0x28 || MPPT2.flags & 0x28 || (BMU.Status & 0x1288)){return 1;}
   return 0;
 }
@@ -570,6 +570,24 @@ void menu_calc (void)
   if(BMU.Watts > BMU.MAX_Watts){BMU.MAX_Watts = BMU.Watts;}
   if(BMU.Battery_I > BMU.MAX_Battery_I){BMU.MAX_Battery_I = BMU.Battery_I;}
   if(BMU.Battery_V > BMU.MAX_Battery_V){BMU.MAX_Battery_V = BMU.Battery_V;}
+}
+
+/******************************************************************************
+ ** Function name:  menu_HV
+ **
+ ** Description:    Controls HV contactor
+ **
+ ** Parameters:     None
+ ** Returned value: None
+ **
+ ******************************************************************************/
+void menu_HV (void)
+{
+  if(ESC.Bus_V > 90 && ESC.Bus_V > 0.9 * BMU.Battery_V && STATS.hv_counter<1100){STATS.hv_counter++;}
+  else if(STATS.hv_counter){STATS.hv_counter--;}
+
+  if(STATS.hv_counter>1000 && !STATS_ARMED){buzzer(50);SET_STATS_ARMED;HV_ON;}
+  else if(STATS.hv_counter<100){CLR_STATS_ARMED;HV_OFF;}
 }
 
 /******************************************************************************
@@ -802,7 +820,7 @@ void I2C_Write (uint16_t _EEadd, uint8_t data0, uint8_t data1, uint8_t data2, ui
  ** Returned value:	Smoothed value
  **
  ******************************************************************************/
-uint32_t iirFILTER_int (uint32_t _data_in, uint32_t _cur_data, uint8_t _gain)
+uint32_t iirFILTER_int (uint32_t _data_in, uint32_t _cur_data, uint16_t _gain)
 {return (((_gain-1)*_cur_data)+_data_in)/_gain;}
 
 /******************************************************************************
@@ -816,7 +834,7 @@ uint32_t iirFILTER_int (uint32_t _data_in, uint32_t _cur_data, uint8_t _gain)
  ** Returned value:	Smoothed value
  **
  ******************************************************************************/
-float iirFILTER_float (float _data_in, float _cur_data, uint8_t _gain)
+float iirFILTER_float (float _data_in, float _cur_data, uint16_t _gain)
 {return (((_gain-1)*_cur_data)+_data_in)/_gain;}
 
 /******************************************************************************
@@ -1081,6 +1099,7 @@ int main (void)
     menu_lights();
     menu_can_handler();
     menu_calc();
+    menu_HV();
   }
 
   return 0; // For compilers sanity

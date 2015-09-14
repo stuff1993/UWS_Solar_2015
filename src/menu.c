@@ -18,11 +18,12 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "type.h"
+#include "inputs.h"
 #include "can.h"
-#include "timer.h"
 #include "lcd.h"
 #include "menu.h"
 #include "dash.h"
+#include "timer.h"
 
 extern MOTORCONTROLLER ESC;
 extern MPPT MPPT1, MPPT2;
@@ -61,8 +62,6 @@ void lcd_display_errOnStart (void)
  ******************************************************************************/
 void lcd_display_driver (void)
 {
-  char sel[2], blank[2];
-
   menu.driver = 255;
   menu.submenu_pos = 1;
   CLR_MENU_SELECTED;
@@ -71,9 +70,6 @@ void lcd_display_driver (void)
   lcd_putstring(1,0, "   DISPLAY    TEST  ");
   lcd_putstring(2,0, "   RACE 1     RACE 2");
 
-  sprintf(sel, ">>");
-  sprintf(blank, "  ");
-
   while(menu.driver == 255)
   {
     _lcd_putTitle("-DRIVER-");
@@ -81,28 +77,28 @@ void lcd_display_driver (void)
     {
       default:
       case 0:
-        lcd_putstring(1,0, sel);
-        lcd_putstring(1,11, blank);
-        lcd_putstring(2,0, blank);
-        lcd_putstring(2,11, blank);
+        lcd_putstring(1,0, SELECTOR);
+        lcd_putstring(1,11, DESELECTOR);
+        lcd_putstring(2,0, DESELECTOR);
+        lcd_putstring(2,11, DESELECTOR);
         break;
       case 1:
-        lcd_putstring(1,0, blank);
-        lcd_putstring(1,11, sel);
-        lcd_putstring(2,0, blank);
-        lcd_putstring(2,11, blank);
+        lcd_putstring(1,0, DESELECTOR);
+        lcd_putstring(1,11, SELECTOR);
+        lcd_putstring(2,0, DESELECTOR);
+        lcd_putstring(2,11, DESELECTOR);
         break;
       case 2:
-        lcd_putstring(1,0, blank);
-        lcd_putstring(1,11, blank);
-        lcd_putstring(2,0, sel);
-        lcd_putstring(2,11, blank);
+        lcd_putstring(1,0, DESELECTOR);
+        lcd_putstring(1,11, DESELECTOR);
+        lcd_putstring(2,0, SELECTOR);
+        lcd_putstring(2,11, DESELECTOR);
         break;
       case 3:
-        lcd_putstring(1,0, blank);
-        lcd_putstring(1,11, blank);
-        lcd_putstring(2,0, blank);
-        lcd_putstring(2,11, sel);
+        lcd_putstring(1,0, DESELECTOR);
+        lcd_putstring(1,11, DESELECTOR);
+        lcd_putstring(2,0, DESELECTOR);
+        lcd_putstring(2,11, SELECTOR);
         break;
     }
 
@@ -342,11 +338,11 @@ void lcd_display_cruise (void)
       lcd_putstring(3,0, buffer);
 
       // Button presses
-      if(btn_release_select())								{CLR_STATS_CR_ACT;}
+      if(btn_release_select()){CLR_STATS_CR_ACT;}
 
-      if(btn_release_increment())								{STATS.CRUISE_SPEED += 1;}
+      if(btn_release_increment()){STATS.CRUISE_SPEED += 1;}
 
-      if((STATS.CRUISE_SPEED > 1) && btn_release_decrement())	{STATS.CRUISE_SPEED -= 1;}
+      if((STATS.CRUISE_SPEED > 1) && btn_release_decrement()){STATS.CRUISE_SPEED -= 1;}
     }
     else if(STATS_CR_STS && !STATS_CR_ACT)
     {
@@ -358,11 +354,11 @@ void lcd_display_cruise (void)
       lcd_putstring(3,0, EROW);
 
       // Button presses
-      if(btn_release_select())								{CLR_STATS_CR_STS;STATS.CRUISE_SPEED = 0;}
+      if(btn_release_select()){CLR_STATS_CR_STS;STATS.CRUISE_SPEED = 0;}
 
-      if((STATS.CRUISE_SPEED > 1) && btn_release_increment())	{SET_STATS_CR_ACT;}
+      if((STATS.CRUISE_SPEED > 1) && btn_release_increment()){SET_STATS_CR_ACT;}
 
-      if(btn_release_decrement())								{STATS.CRUISE_SPEED = ESC.Velocity_KMH;SET_STATS_CR_ACT;}
+      if(btn_release_decrement()){STATS.CRUISE_SPEED = ESC.Velocity_KMH;SET_STATS_CR_ACT;}
 
     }
     else if(STATS_CR_ACT && !STATS_CR_STS) // Should never trip, but just in case
@@ -528,34 +524,11 @@ void lcd_display_MPPTPower (void)
   lcd_putstring(3,0, buffer);
   if(len<20){_lcd_padding(3, len, 20 - len);}
 
-  if(SELECT || INCREMENT || MENU_SEL_DWN || MENU_INC_DWN)
+  if(btn_release_inc_sel() == 3)
   {
-    if(!(SELECT || INCREMENT) && (MENU_SEL_DWN && MENU_INC_DWN))
-    {
       MPPT1.WattHrs = 0;
       MPPT2.WattHrs = 0;
       buzzer(50);
-      CLR_MENU_INC_DWN;
-      CLR_MENU_SEL_DWN;
-    }
-    else if(SELECT && !INCREMENT)
-    {
-      SET_MENU_SEL_DWN;
-    }
-    else if(!SELECT && INCREMENT)
-    {
-      SET_MENU_INC_DWN;
-    }
-    else if(SELECT && INCREMENT)
-    {
-      SET_MENU_INC_DWN;
-      SET_MENU_SEL_DWN;
-    }
-    else
-    {
-      CLR_MENU_INC_DWN;
-      CLR_MENU_SEL_DWN;
-    }
   }
 }
 
@@ -610,12 +583,11 @@ void lcd_display_motor (void)
       lcd_putstring(2,0, buffer);
       if(len<20){_lcd_padding(2, len, 20 - len);}
 
-      if(SELECT)
+      if(btn_release_select())
       {
         ESC.MAX_Bus_I = 0;
         ESC.MAX_Bus_V = 0;
         ESC.MAX_Watts = 0;
-
         buzzer(50);
       }
       break;
@@ -654,35 +626,216 @@ void lcd_display_debug (void)
   sprintf(buffer, "BUS P: %4lu Watts  ", BMU.Watts);
   lcd_putstring(3,0, buffer);
 
-  if(SELECT || INCREMENT || MENU_SEL_DWN || MENU_INC_DWN)
+  if(btn_release_inc_sel() == 3)
   {
-    if(!(SELECT || INCREMENT) && (MENU_SEL_DWN && MENU_INC_DWN))
-    {
       BMU.WattHrs = 0;
       buzzer(50);
-      CLR_MENU_INC_DWN;
-      CLR_MENU_SEL_DWN;
-    }
-    else if(SELECT && !INCREMENT)
-    {
-      SET_MENU_SEL_DWN;
-    }
-    else if(!SELECT && INCREMENT)
-    {
-      SET_MENU_INC_DWN;
-    }
-    else if(SELECT && INCREMENT)
-    {
-      SET_MENU_INC_DWN;
-      SET_MENU_SEL_DWN;
-    }
-    else
-    {
-      CLR_MENU_INC_DWN;
-      CLR_MENU_SEL_DWN;
-    }
   }
 }
+
+/******************************************************************************
+ ** Function name:  lcd_display_config
+ **
+ ** Description:    Compiler configurations screen
+ **
+ ** Parameters:     None
+ ** Returned value: None
+ **
+ ******************************************************************************/
+void lcd_display_config (void)
+{
+  char buffer[20];
+  static int scroll = 0;
+  menu.submenu_items = 4;
+
+  if(!MENU_SELECTED)
+  {
+    _lcd_putTitle("-CONFIG-");
+    lcd_putstring(1,0, "   CAN      PADDLES ");
+    lcd_putstring(2,0, "   OTHER    LIMITS  ");
+    lcd_putstring(3,0, EROW);
+
+    switch(menu.submenu_pos)
+    {
+      default:
+      case 0:
+        lcd_putstring(1,0, SELECTOR);
+        lcd_putstring(1,9, DESELECTOR);
+        lcd_putstring(2,0, DESELECTOR);
+        lcd_putstring(2,9, DESELECTOR);
+        break;
+      case 1:
+        lcd_putstring(1,0, DESELECTOR);
+        lcd_putstring(1,9, DESELECTOR);
+        lcd_putstring(2,0, SELECTOR);
+        lcd_putstring(2,9, DESELECTOR);
+        break;
+      case 2:
+        lcd_putstring(1,0, DESELECTOR);
+        lcd_putstring(1,9, SELECTOR);
+        lcd_putstring(2,0, DESELECTOR);
+        lcd_putstring(2,9, DESELECTOR);
+        break;
+      case 3:
+        lcd_putstring(1,0, DESELECTOR);
+        lcd_putstring(1,9, DESELECTOR);
+        lcd_putstring(2,0, DESELECTOR);
+        lcd_putstring(2,9, SELECTOR);
+        break;
+    }
+  }
+  else
+  {
+    switch(menu.submenu_pos)
+    {
+      default:
+      case 0:
+        _lcd_putTitle("-CAN-");
+        switch(scroll)
+        {
+          default:
+          case 0:
+            sprintf(buffer, "ESC_BASE      %#05x ", ESC_BASE);
+            lcd_putstring(1,0, buffer);
+            sprintf(buffer, "ESC_CONTROL   %#05x ", ESC_CONTROL);
+            lcd_putstring(2,0, buffer);
+            sprintf(buffer, "BMU_BASE      %#05x ", BMU_BASE);
+            lcd_putstring(3,0, buffer);
+            break;
+          case 1:
+            sprintf(buffer, "DASH_RPLY     %#05x ", DASH_RPLY);
+            lcd_putstring(1,0, buffer);
+            sprintf(buffer, "DASH_RQST     %#05x ", DASH_RQST);
+            lcd_putstring(2,0, buffer);
+            sprintf(buffer, "MPPT1_BASE    %#05x ", MPPT1_BASE);
+            lcd_putstring(3,0, buffer);
+            break;
+          case 2:
+            sprintf(buffer, "MPPT1_RPLY    %#05x ", MPPT1_RPLY);
+            lcd_putstring(1,0, buffer);
+            sprintf(buffer, "MPPT2_BASE    %#05x ", MPPT2_BASE);
+            lcd_putstring(2,0, buffer);
+            sprintf(buffer, "MPPT2_RPLY    %#05x ", MPPT2_RPLY);
+            lcd_putstring(3,0, buffer);
+            break;
+        }
+        break;
+      case 1:
+        _lcd_putTitle("-OTHER-");
+        sprintf(buffer, "AUTO_SWOC     %5.2f ", AUTO_SWOC);
+        lcd_putstring(1,0, buffer);
+        sprintf(buffer, "WHEEL D (M)   %5.0f ", WHEEL_D_M);
+        lcd_putstring(2,0, buffer);
+        lcd_putstring(3,0, EROW);
+        break;
+        break;
+      case 2:
+        _lcd_putTitle("-PADDLES-");
+        switch(scroll)
+        {
+          default:
+          case 0:
+            sprintf(buffer, "MAX_RGN_DZ    %5.2f ", MAX_RGN_DZ);
+            lcd_putstring(1,0, buffer);
+            sprintf(buffer, "MIN_RGN_DZ    %5.2f ", MIN_RGN_DZ);
+            lcd_putstring(2,0, buffer);
+            sprintf(buffer, "MAX_THR_DZ    %5.2f ", MAX_THR_DZ);
+            lcd_putstring(3,0, buffer);
+            break;
+          case 1:
+            sprintf(buffer, "MIN_THR_DZ    %5.2f ", MIN_THR_DZ);
+            lcd_putstring(1,0, buffer);
+            sprintf(buffer, "LOW_PAD_V     %5.2f ", LOW_PAD_V);
+            lcd_putstring(2,0, buffer);
+            sprintf(buffer, "MID_PAD_V     %5.2f ", MID_PAD_V);
+            lcd_putstring(3,0, buffer);
+            break;
+          case 2:
+            sprintf(buffer, "HGH_PAD_V     %5.2f ", HGH_PAD_V);
+            lcd_putstring(1,0, buffer);
+            sprintf(buffer, "ADC/V         %5.0f ", ADC_POINTS_PER_V);
+            lcd_putstring(2,0, buffer);
+            lcd_putstring(3,0, EROW);
+            break;
+        }
+          case 3:
+        _lcd_putTitle("-LIMITS-");
+        switch(scroll)
+        {
+          default:
+          case 0:
+            sprintf(buffer, "MAX_ESC_CUR   %5.1f ", MAX_ESC_CUR);
+            lcd_putstring(1,0, buffer);
+            sprintf(buffer, "MAX_REGEN     %5.1f ", MAX_REGEN);
+            lcd_putstring(2,0, buffer);
+            sprintf(buffer, "MAX_THR_DISP  %5.1f ", BMU_BASE);
+            lcd_putstring(3,0, buffer);
+            break;
+          case 1:
+            sprintf(buffer, "MAX_THR_LOW   %5.1f ", MAX_THR_LOWSPD);
+            lcd_putstring(1,0, buffer);
+            sprintf(buffer, "LOWSPD_THRES  %5.1f ", LOWSPD_THRES);
+            lcd_putstring(2,0, buffer);
+            lcd_putstring(3,0, EROW);
+            break;
+        }
+        break;
+    }
+  }
+
+  if(btn_release_select())
+  {
+    if(MENU_SELECTED){CLR_MENU_SELECTED;}
+    else{scroll = 0;SET_MENU_SELECTED;}
+  }
+
+  if(btn_release_increment())
+  {
+    if(MENU_SELECTED)
+    {
+      switch(menu.submenu_pos)
+      {
+        default:
+        case 0:
+          menu_inc(&scroll, 3);
+          break;
+        case 1:
+          break;
+        case 2:
+          menu_inc(&scroll, 3);
+          break;
+        case 3:
+          menu_inc(&scroll, 2);
+          break;
+      }
+    }
+    else{menu_inc(&menu.submenu_pos, menu.submenu_items);}
+  }
+
+  if(btn_release_decrement())
+  {
+    if(MENU_SELECTED)
+    {
+      switch(menu.submenu_pos)
+      {
+        default:
+        case 0:
+          menu_dec(&scroll, 3);
+          break;
+        case 1:
+          break;
+        case 2:
+          menu_dec(&scroll, 3);
+          break;
+        case 3:
+          menu_dec(&scroll, 2);
+          break;
+      }
+    }
+    else{menu_dec(&menu.submenu_pos, menu.submenu_items);}
+  }
+}
+
 
 /******************************************************************************
  ** Function name:		lcd_display_errors
@@ -702,7 +855,7 @@ void lcd_display_errors (void)
   sprintf(buffer, "ESC: %d", ESC.ERROR);
   lcd_putstring(1,0, buffer);
 
-  sprintf(buffer, "MPPT: %#5x", ((MPPT2.flags & 0x03 ? 1 : 0) << 9)|((MPPT1.flags & 0x03 ? 1 : 0) << 8)|(MPPT1.flags & 0x3C << 2)|((MPPT2.flags & 0x3C) >> 2));
+  sprintf(buffer, "MPPT: %#05x", ((MPPT2.flags & 0x03 ? 1 : 0) << 9)|((MPPT1.flags & 0x03 ? 1 : 0) << 8)|(MPPT1.flags & 0x3C << 2)|((MPPT2.flags & 0x3C) >> 2));
   lcd_putstring(2,0, buffer);
 
   sprintf(buffer, "BMU: %lu", BMU.Status);
@@ -882,7 +1035,10 @@ void lcd_display_runtime (void)
   int len;
 
   _lcd_putTitle("-RUNTIME-");
-  lcd_putstring(1,0, EROW);
+
+  len = sprintf(buffer, "Counter: %lu", menu.counter);
+  lcd_putstring(1,0, buffer);
+  if(len<20){_lcd_padding(1, len, 20 - len);}
 
   len = sprintf(buffer, "%luD %02dhr", CLOCK.T_D, CLOCK.T_H);
   lcd_putstring(2,0, buffer);
@@ -923,20 +1079,11 @@ void lcd_display_odometer (void)
 
   if(btn_release_select()){STATS.TR_ODOMETER = 0;buzzer(50);}
 
-  if(INCREMENT || DECREMENT || MENU_INC_DWN || MENU_DEC_DWN)
+  if(btn_release_inc_dec() == 3)
   {
-    if(!(INCREMENT || DECREMENT) && (MENU_INC_DWN && MENU_DEC_DWN))
-    {
       STATS.ODOMETER = 0;
       STATS.TR_ODOMETER = 0;
       buzzer(50);
-      CLR_MENU_DEC_DWN;
-      CLR_MENU_INC_DWN;
-    }
-    else if(INCREMENT && !DECREMENT){SET_MENU_INC_DWN;}
-    else if(!INCREMENT && DECREMENT){SET_MENU_DEC_DWN;}
-    else if(INCREMENT && DECREMENT)	{SET_MENU_DEC_DWN;SET_MENU_INC_DWN;}
-    else							{CLR_MENU_DEC_DWN;CLR_MENU_INC_DWN;}
   }
 }
 ///////////////////////////////////////////////
@@ -961,33 +1108,16 @@ void lcd_display_SWOC (void) // errors[0]
   lcd_putstring(3,0, "PRESS OTHER 2 CANCEL");
 
   // BUTTONS
-  if(SELECT || MENU_SEL_DWN)
+  if(btn_release_select())
   {
-    if(!SELECT && MENU_SEL_DWN)
+    if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
     {
-      CLR_MENU_SEL_DWN;
-      if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
-      {
-        esc_reset();
-        buzzer(20);
-      }
+      esc_reset();
+      buzzer(20);
     }
-    else{SET_MENU_SEL_DWN;}
   }
 
-  if(INCREMENT || DECREMENT || MENU_INC_DWN || MENU_DEC_DWN)
-  {
-    if(!(INCREMENT || DECREMENT) && (MENU_INC_DWN && MENU_DEC_DWN))
-    {
-      CLR_MENU_DEC_DWN;
-      CLR_MENU_INC_DWN;
-      SET_STATS_SWOC_ACK;
-    }
-    else if(INCREMENT && !DECREMENT){SET_MENU_INC_DWN;}
-    else if(!INCREMENT && DECREMENT){SET_MENU_DEC_DWN;}
-    else if(INCREMENT && DECREMENT)	{SET_MENU_DEC_DWN;SET_MENU_INC_DWN;}
-    else							{CLR_MENU_DEC_DWN;CLR_MENU_INC_DWN;}
-  }
+  if(btn_release_inc_dec()){SET_STATS_SWOC_ACK;}
 }
 
 /******************************************************************************
@@ -1009,33 +1139,16 @@ void lcd_display_HWOC (void) // errors[1]
   BUZZER_ON;
 
   // BUTTONS
-  if(SELECT || MENU_SEL_DWN)
+  if(btn_release_select())
   {
-    if(!SELECT && MENU_SEL_DWN)
+    if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
     {
-      CLR_MENU_SEL_DWN;
-      if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
-      {
-        esc_reset();
-        BUZZER_OFF;
-      }
+      esc_reset();
+      BUZZER_OFF;
     }
-    else{SET_MENU_SEL_DWN;}
   }
 
-  if(INCREMENT || DECREMENT || MENU_INC_DWN || MENU_DEC_DWN)
-  {
-    if(!(INCREMENT || DECREMENT) && (MENU_INC_DWN && MENU_DEC_DWN))
-    {
-      CLR_MENU_DEC_DWN;
-      CLR_MENU_INC_DWN;
-      SET_STATS_HWOC_ACK;
-    }
-    else if(INCREMENT && !DECREMENT){SET_MENU_INC_DWN;}
-    else if(!INCREMENT && DECREMENT){SET_MENU_DEC_DWN;}
-    else if(INCREMENT && DECREMENT)	{SET_MENU_DEC_DWN;SET_MENU_INC_DWN;}
-    else					            		  {CLR_MENU_DEC_DWN;CLR_MENU_INC_DWN;}
-  }
+  if(btn_release_inc_dec()){SET_STATS_HWOC_ACK;}
 }
 
 /******************************************************************************
@@ -1054,46 +1167,31 @@ void lcd_display_COMMS (void) // errors[2]
   lcd_putstring(2,0, "SELECT: RADIO WORKS ");
   lcd_putstring(3,0, "OTHER:  NO RESPONSE ");
 
-  if(SELECT || MENU_SEL_DWN)
+  if(btn_release_select())
   {
-    if(!SELECT && MENU_SEL_DWN)
+    if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
     {
-      CLR_MENU_SEL_DWN;
-      if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
-      {
-        MsgBuf_TX1.Frame = 0x00010000; 			// 11-bit, no RTR, DLC is 1 byte
-        MsgBuf_TX1.MsgID = DASH_RPLY + 1;
-        MsgBuf_TX1.DataA = 0xFF;
-        MsgBuf_TX1.DataB = 0x0;
-        CAN1_SendMessage( &MsgBuf_TX1 );
-      }
-      CLR_STATS_COMMS;
+      MsgBuf_TX1.Frame = 0x00010000; 			// 11-bit, no RTR, DLC is 1 byte
+      MsgBuf_TX1.MsgID = DASH_RPLY + 1;
+      MsgBuf_TX1.DataA = 0xFF;
+      MsgBuf_TX1.DataB = 0x0;
+      CAN1_SendMessage( &MsgBuf_TX1 );
     }
-    else{SET_MENU_SEL_DWN;}
+    CLR_STATS_COMMS;
   }
 
-  if(INCREMENT || DECREMENT || MENU_INC_DWN || MENU_DEC_DWN)
+  if(btn_release_inc_dec())
   {
-    if(!(INCREMENT || DECREMENT) && (MENU_INC_DWN && MENU_DEC_DWN))
+    if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
     {
-      CLR_MENU_DEC_DWN;
-      CLR_MENU_INC_DWN;
-      if((LPC_CAN1->GSR & (1 << 3)))				// If previous transmission is complete, send message;
-      {
-        MsgBuf_TX1.Frame = 0x00010000; 			// 11-bit, no RTR, DLC is 1 byte
-        MsgBuf_TX1.MsgID = DASH_RPLY + 1;
-        MsgBuf_TX1.DataA = 0x0;
-        MsgBuf_TX1.DataB = 0x0;
-        CAN1_SendMessage( &MsgBuf_TX1 );
-      }
-      CLR_STATS_COMMS;
+      MsgBuf_TX1.Frame = 0x00010000; 			// 11-bit, no RTR, DLC is 1 byte
+      MsgBuf_TX1.MsgID = DASH_RPLY + 1;
+      MsgBuf_TX1.DataA = 0x0;
+      MsgBuf_TX1.DataB = 0x0;
+      CAN1_SendMessage( &MsgBuf_TX1 );
     }
-    else if(INCREMENT && !DECREMENT){SET_MENU_INC_DWN;}
-    else if(!INCREMENT && DECREMENT){SET_MENU_DEC_DWN;}
-    else if(INCREMENT && DECREMENT)	{SET_MENU_DEC_DWN;SET_MENU_INC_DWN;}
-    else							{CLR_MENU_DEC_DWN;CLR_MENU_INC_DWN;}
+    CLR_STATS_COMMS;
   }
-
 }
 
 /******************************************************************************

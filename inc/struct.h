@@ -27,7 +27,7 @@
 #define _MC_PEAKS 1
 
 /// BMU
-#define _BMU_SOC 2			// 1 = SOC, 2 = SOC%, 3 = BOTH
+#define _BMU_SOC 2			  // 1 = SOC, 2 = SOC%, 3 = BOTH
 #define _BMU_BAL_SOC 0		// 1 = Balance AmpHrs, 2 = Balance as %, 3 = BOTH
 #define _BMU_THRES 0
 #define _BMU_CAP 0
@@ -37,7 +37,7 @@
 #define _BMU_BAL_THRES 0
 #define _BMU_CMU_CNT 0
 #define _BMU_VER 0
-#define _BMU_FAN 0			// 1 = Fan0, 2 = Fan1, 3 = BOTH
+#define _BMU_FAN 0			  // 1 = Fan0, 2 = Fan1, 3 = BOTH
 #define _BMU_12V_CONSUM 0
 #define _BMU_POWER 1
 #define _BMU_PEAKS 1
@@ -156,7 +156,7 @@ typedef struct // MOTORCONTROLLER
 #endif // MC_PEAKS
 }MOTORCONTROLLER;
 
-struct // BMU
+struct BMU_STRUCT
 {
 	/// Predetermined Values
 	uint32_t CAN_ID;				// CAN Bus Identifier
@@ -249,26 +249,28 @@ struct // BMU
 #endif // _BMU_PEKAS
 }BMU;
 
-struct // STATS
+struct STATS_STRUCT
 {
 	unsigned int RAMP_SPEED;	// .1%
-	uint8_t BUZ_TIM;			// 10mS ticks to sound buzzer
-	float ODOMETER; 			// km
-	float TR_ODOMETER; 			// km
-	float MAX_SPEED; 			// kmh
-	float CRUISE_SPEED; 		// kmh
+	float ODOMETER; 			    // km
+	float TR_ODOMETER; 			  // km
+	float MAX_SPEED; 			    // kmh
+	float CRUISE_SPEED; 		  // kmh
+	uint16_t hv_counter;      //
+	uint8_t BUZ_TIM;          // 10mS ticks to sound buzzer
 	uint8_t flags;
 	uint8_t errors;
 }STATS;
 
+/// STATS.flags
 #define STATS_DRV_MODE       ((STATS.flags & 0x01) >> 0)
 #define STATS_BUZZER         ((STATS.flags & 0x02) >> 1)
 #define STATS_MPPT_POLL      ((STATS.flags & 0x04) >> 2)
 #define STATS_ARMED          ((STATS.flags & 0x08) >> 3)
 #define STATS_CR_ACT         ((STATS.flags & 0x10) >> 4)
 #define STATS_CR_STS         ((STATS.flags & 0x20) >> 5)
-#define STATS_FUNUSED_1       ((STATS.flags & 0x40) >> 6)
-#define STATS_FUNUSED_2       ((STATS.flags & 0x80) >> 7)
+#define STATS_FUNUSED_1      ((STATS.flags & 0x40) >> 6)
+#define STATS_FUNUSED_2      ((STATS.flags & 0x80) >> 7)
 
 #define SET_STATS_DRV_MODE   STATS.flags |= 0x01;	// Sports Flagged
 #define SET_STATS_BUZZER     STATS.flags |= 0x02;
@@ -276,8 +278,8 @@ struct // STATS
 #define SET_STATS_ARMED      STATS.flags |= 0x08;
 #define SET_STATS_CR_ACT     STATS.flags |= 0x10;
 #define SET_STATS_CR_STS     STATS.flags |= 0x20;
-#define SET_STATS_FUNUSED_1   STATS.flags |= 0x40;
-#define SET_STATS_FUNUSED_2   STATS.flags |= 0x80;
+#define SET_STATS_FUNUSED_1  STATS.flags |= 0x40;
+#define SET_STATS_FUNUSED_2  STATS.flags |= 0x80;
 
 #define CLR_STATS_DRV_MODE   STATS.flags &= 0xFE;	// Economy Flagged
 #define CLR_STATS_BUZZER     STATS.flags &= 0xFD;
@@ -285,33 +287,34 @@ struct // STATS
 #define CLR_STATS_ARMED      STATS.flags &= 0xF7;
 #define CLR_STATS_CR_ACT     STATS.flags &= 0xEF;
 #define CLR_STATS_CR_STS     STATS.flags &= 0xDF;
-#define CLR_STATS_FUNUSED_1   STATS.flags &= 0xBF;
-#define CLR_STATS_FUNUSED_2   STATS.flags &= 0x7F;
+#define CLR_STATS_FUNUSED_1  STATS.flags &= 0xBF;
+#define CLR_STATS_FUNUSED_2  STATS.flags &= 0x7F;
 
+/// STATS.errors
 #define STATS_SWOC_ACK       ((STATS.errors & 0x01) >> 0)
 #define STATS_HWOC_ACK       ((STATS.errors & 0x02) >> 1)
 #define STATS_COMMS          ((STATS.errors & 0x04) >> 2)
 #define STATS_FAULT          ((STATS.errors & 0x18) >> 3)
-#define STATS_EUNUSED_1       ((STATS.errors & 0x20) >> 5)
-#define STATS_EUNUSED_2       ((STATS.errors & 0x40) >> 6)
-#define STATS_EUNUSED_3       ((STATS.errors & 0x80) >> 7)
+#define STATS_EUNUSED_1      ((STATS.errors & 0x20) >> 5)
+#define STATS_EUNUSED_2      ((STATS.errors & 0x40) >> 6)
+#define STATS_EUNUSED_3      ((STATS.errors & 0x80) >> 7)
 
 #define SET_STATS_SWOC_ACK   STATS.errors |= 0x01;
 #define SET_STATS_HWOC_ACK   STATS.errors |= 0x02;
 #define SET_STATS_COMMS      STATS.errors |= 0x04;
-#define SET_STATS_EUNUSED_1   STATS.errors |= 0x20;
-#define SET_STATS_EUNUSED_2   STATS.errors |= 0x40;
-#define SET_STATS_EUNUSED_3   STATS.errors |= 0x80;
+#define SET_STATS_EUNUSED_1  STATS.errors |= 0x20;
+#define SET_STATS_EUNUSED_2  STATS.errors |= 0x40;
+#define SET_STATS_EUNUSED_3  STATS.errors |= 0x80;
 
 #define CLR_STATS_SWOC_ACK   STATS.errors &= 0xFE;
 #define CLR_STATS_HWOC_ACK   STATS.errors &= 0xFD;
 #define CLR_STATS_COMMS      STATS.errors &= 0xFB;
-#define CLR_STATS_EUNUSED_1   STATS.errors &= 0xDF;
-#define CLR_STATS_EUNUSED_2   STATS.errors &= 0xBF;
-#define CLR_STATS_EUNUSED_3   STATS.errors &= 0x7F;
+#define CLR_STATS_EUNUSED_1  STATS.errors &= 0xDF;
+#define CLR_STATS_EUNUSED_2  STATS.errors &= 0xBF;
+#define CLR_STATS_EUNUSED_3  STATS.errors &= 0x7F;
 
 
-struct // DRIVE
+struct DRIVE_STRUCT
 {
 	float Speed_RPM;
 	float Current;
@@ -320,7 +323,7 @@ struct // DRIVE
 
 struct CLOCK_STRUCT
 {
-	uint8_t		T_mS;	// (mS / 10)
+	uint8_t		T_mS;	  // (mS / 10)
 	uint8_t		T_S;
 	uint8_t		T_M;
 	uint8_t		T_H;

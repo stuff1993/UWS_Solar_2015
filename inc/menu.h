@@ -12,6 +12,8 @@
 #define ERROR_ITEMS 4
 
 #define EROW 	"                    "
+#define SELECTOR ">>"
+#define DESELECTOR "  "
 
 struct MENUS
 {
@@ -88,6 +90,6 @@ void _buffer_rotate_left(char *_buf, int _len);
 void menu_inc(uint8_t *_pos, uint8_t _total);
 void menu_dec(uint8_t *_pos, uint8_t _total);
 
-void menu_init (void);
+void menu_init(void);
 
 #endif /* MENU_H_ */

@@ -20,9 +20,9 @@
 #define MIN_RGN_DZ			0.05
 #define MAX_THR_DZ			0.05
 #define MIN_THR_DZ			0.05
-#define LOW_PAD_V			0.25
-#define MID_PAD_V			1.25
-#define HGH_PAD_V			2.25
+#define LOW_PAD_V			  0.25
+#define MID_PAD_V			  1.25
+#define HGH_PAD_V			  2.25
 #define ADC_POINTS_PER_V	1240.909091
 
 #define ECONOMY_RAMP_SPEED	5
@@ -31,12 +31,12 @@
 
 #define MAX_ESC_CUR			65.0	// Amps
 
-#define MAX_REGEN			350.0		// Maximum available regen - 0 to 1000 (0% to 100%)
+#define MAX_REGEN			  350.0		// Maximum available regen - 0 to 1000 (0% to 100%)
 #define MAX_THR_DISP		600.0		// Maximum available throttle in display mode - 0 - 1000 (0% - 100%)
-#define MAX_THR_LOWSPD		750.0		// Maximum available throttle under LOWSPD_THRES - 0 - 1000 (0% - 100%)
-#define LOWSPD_THRES		20.0    	// Threshold speed for low speed throttle cap
+#define MAX_THR_LOWSPD	750.0		// Maximum available throttle under LOWSPD_THRES - 0 - 1000 (0% - 100%)
+#define LOWSPD_THRES		20.0    // Threshold speed for low speed throttle cap
 
-#define IIR_GAIN_ELECTRICAL	100
+#define IIR_GAIN_ELECTRICAL	1000
 #define IIR_GAIN_THERMAL	10
 
 /// OUTPUTS
@@ -117,40 +117,31 @@
 #define AddressBMUWHR	16
 #define AddressMPPT2WHR	20
 
-// BMU Ignition switches
-
-#define SW_MODE_R		0x0001
-#define SW_MODE_N		0x0002
-#define SW_MODE_B		0x0004
-#define SW_MODE_D		0x0008
-#define SW_IGN_ACC		0x0010
-#define SW_IGN_ON		0x0020
-#define SW_IGN_START	0x0040
-
-
-void BOD_IRQHandler(void);
-void menu_mppt_poll(void);
-void mppt_data_extract(MPPT *_MPPT, fakeMPPTFRAME *_fkMPPT);
-void menu_input_check(void);
-int menu_fault_check(void);
-void menu_drive(void);
-void menu_lights(void);
-void menu_can_handler(void);
-void menu_calc(void);
-void esc_reset (void);
-void load_persistent(void);
-void store_persistent(void);
-uint32_t EE_Read(uint16_t _EEadd);
-uint32_t EE_Seq_Read(uint16_t _EEadd, int _len);
-void EE_Write(uint16_t _EEadd, uint32_t data);
-uint32_t I2C_Read(uint16_t _EEadd);
-void I2C_Seq_Read(uint16_t _EEadd, int read_len);
-void I2C_Write(uint16_t _EEadd, uint8_t data0, uint8_t data1, uint8_t data2, uint8_t data3);
-uint32_t iirFILTER_int(uint32_t _data_in, uint32_t _cur_data, uint8_t _gain);
-float iirFILTER_float(float _data_in, float _cur_data, uint8_t _gain);
-void load_nonpersistent(void);
-void init_GPIO(void);
-void buzzer(uint32_t val);
-void BOD_Init(void);
+/// Function Prototypes ///
+void      BOD_IRQHandler      (void);
+void      menu_mppt_poll      (void);
+void      mppt_data_extract   (MPPT *_MPPT, fakeMPPTFRAME *_fkMPPT);
+void      menu_input_check    (void);
+int       menu_fault_check    (void);
+void      menu_drive          (void);
+void      menu_lights         (void);
+void      menu_can_handler    (void);
+void      menu_calc           (void);
+void      menu_HV             (void);
+void      esc_reset           (void);
+void      init_GPIO           (void);
+void      load_nonpersistent  (void);
+void      load_persistent     (void);
+void      store_persistent    (void);
+uint32_t  EE_Read             (uint16_t _EEadd);
+uint32_t  EE_Seq_Read         (uint16_t _EEadd, int _len);
+void      EE_Write            (uint16_t _EEadd, uint32_t data);
+uint32_t  I2C_Read            (uint16_t _EEadd);
+void      I2C_Seq_Read        (uint16_t _EEadd, int read_len);
+void      I2C_Write           (uint16_t _EEadd, uint8_t data0, uint8_t data1, uint8_t data2, uint8_t data3);
+uint32_t  iirFILTER_int       (uint32_t _data_in, uint32_t _cur_data, uint16_t _gain);
+float     iirFILTER_float     (float _data_in, float _cur_data, uint16_t _gain);
+void      buzzer              (uint32_t val);
+void      BOD_Init            (void);
 
 #endif /* DASH_H_ */

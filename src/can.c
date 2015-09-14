@@ -9,7 +9,7 @@
 #include "type.h"
 #include "can.h"
 #include "dash.h"
-#include "menu.h"
+//#include "menu.h"
 #include "struct.h"
 #include "inttofloat.h"
 
@@ -69,8 +69,6 @@ void CAN_ISR_Rx1( void )
 	case ESC_BASE + 2:
 	ESC.Bus_V = iirFILTER_float(ESC.Bus_V, conv_uint_float(MsgBuf_RX1.DataA), IIR_GAIN_ELECTRICAL);
 	ESC.Bus_I = iirFILTER_float(ESC.Bus_I, conv_uint_float(MsgBuf_RX1.DataB), IIR_GAIN_ELECTRICAL);
-	if(ESC.Bus_V > 80 && (ESC.Bus_V > BMU.Battery_V / 1111)){SET_STATS_ARMED;HV_ON;}
-	else{CLR_STATS_ARMED;HV_OFF;}
 	break;
 	case ESC_BASE + 3:
 #if _MC_VELOCITY == 1

@@ -8,6 +8,8 @@
 #ifndef INPUTS_H_
 #define INPUTS_H_
 
+#include "LPC17xx.h"
+
 struct INPUT // in structure for easy logical expansion to other events (on press, timed hold)
 {
   uint8_t input_dwn;
@@ -19,7 +21,7 @@ struct INPUT // in structure for easy logical expansion to other events (on pres
 #define INPUTS_RIGHT_DWN      ((inputs.input_dwn & 0x08) >> 3)
 #define INPUTS_SEL_DWN        ((inputs.input_dwn & 0x10) >> 4)
 #define INPUTS_CRU_UP         ((inputs.input_dwn & 0x20) >> 5)
-#define INPUTS_CRU_UP         ((inputs.input_dwn & 0x40) >> 6)
+#define INPUTS_CRU_DWN        ((inputs.input_dwn & 0x40) >> 6)
 #define INPUTS_UNUSED_1       ((inputs.input_dwn & 0x80) >> 7)
 
 #define SET_INPUTS_DEC_DWN    inputs.input_dwn |= 0x01;
@@ -28,7 +30,7 @@ struct INPUT // in structure for easy logical expansion to other events (on pres
 #define SET_INPUTS_RIGHT_DWN  inputs.input_dwn |= 0x08;
 #define SET_INPUTS_SEL_DWN    inputs.input_dwn |= 0x10;
 #define SET_INPUTS_CRU_UP     inputs.input_dwn |= 0x20;
-#define SET_INPUTS_CRU_UP     inputs.input_dwn |= 0x40;
+#define SET_INPUTS_CRU_DWN    inputs.input_dwn |= 0x40;
 #define SET_INPUTS_UNUSED_1   inputs.input_dwn |= 0x80;
 
 #define CLR_INPUTS_DEC_DWN    inputs.input_dwn &= 0xFE;
@@ -37,7 +39,7 @@ struct INPUT // in structure for easy logical expansion to other events (on pres
 #define CLR_INPUTS_RIGHT_DWN  inputs.input_dwn &= 0xF7;
 #define CLR_INPUTS_SEL_DWN    inputs.input_dwn &= 0xEF;
 #define CLR_INPUTS_CRU_UP     inputs.input_dwn &= 0xDF;
-#define CLR_INPUTS_CRU_UP     inputs.input_dwn &= 0xBF;
+#define CLR_INPUTS_CRU_DWN    inputs.input_dwn &= 0xBF;
 #define CLR_INPUTS_UNUSED_1   inputs.input_dwn &= 0x7F;
 
 uint8_t btn_release_select(void);
