@@ -2,7 +2,7 @@
  * inputs.c
  *
  *  Created on: Sep 6, 2015
- *      Author: Stuff
+ *      Author: Stuart G
  */
 
 #include "inputs.h"

@@ -2,7 +2,7 @@
  * type.h
  *
  *  Created on: 19 Jul 2015
- *      Author: Stuff
+ *      Author: Stuart G
  */
 
 #ifndef TYPE_H_
@@ -19,9 +19,5 @@
 #ifndef TRUE
 #define TRUE    (1)
 #endif
-
-
-typedef enum {RESET = 0, SET = !RESET} FlagStatus, ITStatus;
-typedef enum {DISABLE = 0, ENABLE = !DISABLE} FunctionalState;
 
 #endif /* TYPE_H_ */

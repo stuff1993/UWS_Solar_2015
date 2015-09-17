@@ -1,22 +1,21 @@
 /*
- * can2.c
+ * can.c
  *
  *  Created on: 28 Apr 2015
- *      Author: Stuff
+ *      Author: Stuart G
  */
 
 #include "lpc17xx.h"
 #include "type.h"
 #include "can.h"
 #include "dash.h"
-//#include "menu.h"
 #include "struct.h"
 #include "inttofloat.h"
 
 extern CAN_MSG MsgBuf_RX1, MsgBuf_RX2;
 extern CAN_MSG MsgBuf_TX1, MsgBuf_TX2;
 extern volatile uint8_t CAN1RxDone, CAN2RxDone;
-extern MOTORCONTROLLER ESC;
+extern MOTORCONTROLLER esc;
 
 volatile uint32_t CANStatus;
 volatile uint32_t CAN1RxCount = 0, CAN2RxCount = 0;
@@ -28,260 +27,260 @@ volatile uint32_t CANActivityInterruptFlag = 0;
 #endif
 
 /******************************************************************************
-** Function name:		CAN_ISR_Rx1
+** Function name: CAN_ISR_Rx1
 **
-** Descriptions:		CAN Rx1 interrupt handler
+** Description:   CAN Rx1 interrupt handler
 **
-** parameters:			None
-** Returned value:		None
+** Parameters:      None
+** Returned value:  None
 **
 ******************************************************************************/
 void CAN_ISR_Rx1( void )
 {
-	uint32_t * pDest = (uint32_t *)&MsgBuf_RX1;
+  uint32_t * pDest = (uint32_t *)&MsgBuf_RX1;
 
-	*pDest = LPC_CAN1->RFS; // Frame
-	pDest++;
+  *pDest = LPC_CAN1->RFS; // Frame
+  pDest++;
 
-	*pDest = LPC_CAN1->RID; // ID
-	pDest++;
+  *pDest = LPC_CAN1->RID; // ID
+  pDest++;
 
-	*pDest = LPC_CAN1->RDA; // DataA
-	pDest++;
+  *pDest = LPC_CAN1->RDA; // DataA
+  pDest++;
 
-	*pDest = LPC_CAN1->RDB; // DataB
-	pDest++;
+  *pDest = LPC_CAN1->RDB; // DataB
+  pDest++;
 
-	switch (MsgBuf_RX1.MsgID)
-	{
-	case ESC_BASE:
-		ESC.SERIAL_NO = MsgBuf_RX1.DataB;
-		break;
-	case ESC_BASE + 1:
+  switch (MsgBuf_RX1.MsgID)
+  {
+  case ESC_BASE:
+    esc.SERIAL_NO = MsgBuf_RX1.DataB;
+    break;
+  case ESC_BASE + 1:
 #if _MC_ERR
-	ESC.ERROR = (MsgBuf_RX1.DataA >> 16);
-	if(ESC.ERROR == 0x2){CAN1RxDone = TRUE;NEUTRAL_ON;REVERSE_ON;DRIVE_ON;REGEN_ON;}
+  esc.ERROR = (MsgBuf_RX1.DataA >> 16);
+  if(esc.ERROR == 0x2){CAN1RxDone = TRUE;NEUTRAL_ON;REVERSE_ON;DRIVE_ON;REGEN_ON;}
 #endif
 #if _MC_LIM
-	ESC.LIMIT = (MsgBuf_RX1.DataA & 0xFFFF);
+  esc.LIMIT = (MsgBuf_RX1.DataA & 0xFFFF);
 #endif
-	break;
-	case ESC_BASE + 2:
-	ESC.Bus_V = iirFILTER_float(ESC.Bus_V, conv_uint_float(MsgBuf_RX1.DataA), IIR_GAIN_ELECTRICAL);
-	ESC.Bus_I = iirFILTER_float(ESC.Bus_I, conv_uint_float(MsgBuf_RX1.DataB), IIR_GAIN_ELECTRICAL);
-	break;
-	case ESC_BASE + 3:
+  break;
+  case ESC_BASE + 2:
+  esc.Bus_V = iir_filter_float(esc.Bus_V, conv_uint_float(MsgBuf_RX1.DataA), IIR_GAIN_ELECTRICAL);
+  esc.Bus_I = iir_filter_float(esc.Bus_I, conv_uint_float(MsgBuf_RX1.DataB), IIR_GAIN_ELECTRICAL);
+  break;
+  case ESC_BASE + 3:
 #if _MC_VELOCITY == 1
-	ESC.Velocity_KMH = conv_uint_float(MsgBuf_RX1.DataB)*3.6;
+  esc.Velocity_KMH = conv_uint_float(MsgBuf_RX1.DataB)*3.6;
 #elif _MC_VELOCITY == 2
-	ESC.Velocity_RPM = conv_uint_float(MsgBuf_RX1.DataA);
+  esc.Velocity_RPM = conv_uint_float(MsgBuf_RX1.DataA);
 #elif _MC_VELOCITY == 3
-	ESC.Velocity_KMH = conv_uint_float(MsgBuf_RX1.DataB)*3.6;
-	ESC.Velocity_RPM = conv_uint_float(MsgBuf_RX1.DataA);
+  esc.Velocity_KMH = conv_uint_float(MsgBuf_RX1.DataB)*3.6;
+  esc.Velocity_RPM = conv_uint_float(MsgBuf_RX1.DataA);
 #endif
-	break;
-	case ESC_BASE + 4:
+  break;
+  case ESC_BASE + 4:
 #if _MC_PHASE
-	ESC.PhaseC_I = conv_uint_float(MsgBuf_RX1.DataB);
-	ESC.PhaseB_I = conv_uint_float(MsgBuf_RX1.DataA);
+  esc.PhaseC_I = conv_uint_float(MsgBuf_RX1.DataB);
+  esc.PhaseB_I = conv_uint_float(MsgBuf_RX1.DataA);
 #endif
-	break;
-	case ESC_BASE + 5:
+  break;
+  case ESC_BASE + 5:
 #if _MC_VECTORS
-	ESC.VECTORS->V_Real = conv_uint_float(MsgBuf_RX1.DataB);
-	ESC.VECTORS->V_Imag = conv_uint_float(MsgBuf_RX1.DataA);
+  esc.VECTORS->V_Real = conv_uint_float(MsgBuf_RX1.DataB);
+  esc.VECTORS->V_Imag = conv_uint_float(MsgBuf_RX1.DataA);
 #endif
-	break;
-	case ESC_BASE + 6:
+  break;
+  case ESC_BASE + 6:
 #if _MC_VECTORS
-	ESC.VECTORS->I_Real = conv_uint_float(MsgBuf_RX1.DataB);
-	ESC.VECTORS->I_Imag = conv_uint_float(MsgBuf_RX1.DataA);
+  esc.VECTORS->I_Real = conv_uint_float(MsgBuf_RX1.DataB);
+  esc.VECTORS->I_Imag = conv_uint_float(MsgBuf_RX1.DataA);
 #endif
-	break;
-	case ESC_BASE + 7:
+  break;
+  case ESC_BASE + 7:
 #if _MC_VECTORS
-	ESC.VECTORS->BEMF_Real = conv_uint_float(MsgBuf_RX1.DataB);
-	ESC.VECTORS->BEMF_Imag = conv_uint_float(MsgBuf_RX1.DataA);
+  esc.VECTORS->BEMF_Real = conv_uint_float(MsgBuf_RX1.DataB);
+  esc.VECTORS->BEMF_Imag = conv_uint_float(MsgBuf_RX1.DataA);
 #endif
-	break;
-	case ESC_BASE + 8:
+  break;
+  case ESC_BASE + 8:
 #if _MC_RAILS
-	ESC.Rail_15V = conv_uint_float(MsgBuf_RX1.DataB);
+  esc.Rail_15V = conv_uint_float(MsgBuf_RX1.DataB);
 #endif
-	break;
-	case ESC_BASE + 9:
+  break;
+  case ESC_BASE + 9:
 #if _MC_RAILS
-	ESC.Rail_3300mV = conv_uint_float(MsgBuf_RX1.DataB);
-	ESC.Rail_1900mV = conv_uint_float(MsgBuf_RX1.DataA);
+  esc.Rail_3300mV = conv_uint_float(MsgBuf_RX1.DataB);
+  esc.Rail_1900mV = conv_uint_float(MsgBuf_RX1.DataA);
 #endif
-	break;
-	case ESC_BASE + 10:
-	// Reserved Address
-	break;
-	case ESC_BASE + 11:
+  break;
+  case ESC_BASE + 10:
+  // Reserved Address
+  break;
+  case ESC_BASE + 11:
 #if _MC_TMP
-	ESC.Heatsink_Tmp = conv_uint_float(MsgBuf_RX1.DataB);
-	ESC.Motor_Tmp = conv_uint_float(MsgBuf_RX1.DataA);
+  esc.Heatsink_Tmp = conv_uint_float(MsgBuf_RX1.DataB);
+  esc.Motor_Tmp = conv_uint_float(MsgBuf_RX1.DataA);
 #endif
-	break;
-	case ESC_BASE + 12:
+  break;
+  case ESC_BASE + 12:
 #if _MC_TMP
-	ESC.Board_Tmp = conv_uint_float(MsgBuf_RX1.DataA);
+  esc.Board_Tmp = conv_uint_float(MsgBuf_RX1.DataA);
 #endif
-	break;
-	case ESC_BASE + 13:
-	// Reserved Address
-	break;
-	case ESC_BASE + 14:
+  break;
+  case ESC_BASE + 13:
+  // Reserved Address
+  break;
+  case ESC_BASE + 14:
 #if _MC_AMPHRS
-	ESC.DC_AmpHrs = conv_uint_float(MsgBuf_RX1.DataB);
+  esc.DC_AmpHrs = conv_uint_float(MsgBuf_RX1.DataB);
 #endif
 #if _MC_ODO
-	ESC.Odometer = conv_uint_float(MsgBuf_RX1.DataA);
+  esc.Odometer = conv_uint_float(MsgBuf_RX1.DataA);
 #endif
-	break;
-	case ESC_BASE + 23:
+  break;
+  case ESC_BASE + 23:
 #if _MC_SLIP
-	ESC.Slip_Speed = conv_uint_float(MsgBuf_RX1.DataB);
+  esc.Slip_Speed = conv_uint_float(MsgBuf_RX1.DataB);
 #endif
-	break;
+  break;
 
-	case DASH_RQST:
-		CAN1RxDone = TRUE;
-		break;
-	case DASH_RQST + 1:
-		SET_STATS_COMMS;
-	break;
-	case DASH_RQST + 2:
-	break;
-	case DASH_RQST + 3:
-	break;
-	case DASH_RQST + 4:
-	break;
-	case DASH_RQST + 5:
-	break;
-	case DASH_RQST + 6:
-	break;
-	case DASH_RQST + 7:
-	break;
-	case DASH_RQST + 8:
-	break;
-	case DASH_RQST + 9:
-	break;
+  case DASH_RQST:
+    CAN1RxDone = TRUE;
+    break;
+  case DASH_RQST + 1:
+    SET_STATS_COMMS;
+  break;
+  case DASH_RQST + 2:
+  break;
+  case DASH_RQST + 3:
+  break;
+  case DASH_RQST + 4:
+  break;
+  case DASH_RQST + 5:
+  break;
+  case DASH_RQST + 6:
+  break;
+  case DASH_RQST + 7:
+  break;
+  case DASH_RQST + 8:
+  break;
+  case DASH_RQST + 9:
+  break;
 
-	case BMU_BASE:
-		BMU.SERIAL_NO = MsgBuf_RX1.DataA;
-		break;
+  case BMU_BASE:
+    BMU.SERIAL_NO = MsgBuf_RX1.DataA;
+    break;
 
-	case BMU_BASE + BMU_INFO:
+  case BMU_BASE + BMU_INFO:
 #if _BMU_SOC == 1
-	BMU.SOC = conv_uint_float(MsgBuf_RX1.DataB);
+  BMU.SOC = conv_uint_float(MsgBuf_RX1.DataB);
 #elif _BMU_SOC == 2
-	BMU.SOC_PER = conv_uint_float(MsgBuf_RX1.DataA);
+  BMU.SOC_PER = conv_uint_float(MsgBuf_RX1.DataA);
 #elif _BMU_SOC == 3
-	BMU.SOC = conv_uint_float(MsgBuf_RX1.DataB);
-	BMU.SOC_PER = conv_uint_float(MsgBuf_RX1.DataA);
+  BMU.SOC = conv_uint_float(MsgBuf_RX1.DataB);
+  BMU.SOC_PER = conv_uint_float(MsgBuf_RX1.DataA);
 #endif
-	break;
-	case BMU_BASE + BMU_INFO + 1:
+  break;
+  case BMU_BASE + BMU_INFO + 1:
 #if _BMU_BAL_SOC == 1
-	BMU.BAL_SOC = conv_uint_float(MsgBuf_RX1.DataB);
+  BMU.BAL_SOC = conv_uint_float(MsgBuf_RX1.DataB);
 #elif _BMU_BAL_SOC == 2
-	BMU.BAL_SOC_PER = conv_uint_float(MsgBuf_RX1.DataA);
+  BMU.BAL_SOC_PER = conv_uint_float(MsgBuf_RX1.DataA);
 #elif _BMU_BAL_SOC == 3
-	BMU.BAL_SOC = conv_uint_float(MsgBuf_RX1.DataB);
-	BMU.BAL_SOC_PER = conv_uint_float(MsgBuf_RX1.DataA);
+  BMU.BAL_SOC = conv_uint_float(MsgBuf_RX1.DataB);
+  BMU.BAL_SOC_PER = conv_uint_float(MsgBuf_RX1.DataA);
 #endif
-	break;
-	case BMU_BASE + BMU_INFO + 2:
+  break;
+  case BMU_BASE + BMU_INFO + 2:
 #if _BMU_THRES
-	BMU.Charge_Cell_V_Err = MsgBuf_RX1.DataB >> 16;
-	BMU.Cell_Tmp_Margin = MsgBuf_RX1.DataB & 0xFFFF;
-	BMU.Discharge_Cell_V_Err = MsgBuf_RX1.DataA >> 16;
+  BMU.Charge_Cell_V_Err = MsgBuf_RX1.DataB >> 16;
+  BMU.Cell_Tmp_Margin = MsgBuf_RX1.DataB & 0xFFFF;
+  BMU.Discharge_Cell_V_Err = MsgBuf_RX1.DataA >> 16;
 #endif
 #if _BMU_CAP
-	BMU.Pack_Capacity = MsgBuf_RX1.DataA & 0xFFFF;
+  BMU.Pack_Capacity = MsgBuf_RX1.DataA & 0xFFFF;
 #endif
-	break;
-	case BMU_BASE + BMU_INFO + 3:
+  break;
+  case BMU_BASE + BMU_INFO + 3:
 #if _BMU_PRECHARGE
-	BMU.Driver_Status = MsgBuf_RX1.DataB >> 24;
-	BMU.Precharge_Status = (MsgBuf_RX1.DataB >> 16) & 0xFF;
-	if ((MsgBuf_RX1.DataA >> 8) & 0xFF)	{BMU.Precharge_Time_Elapsed = TRUE;}
-	else								{BMU.Precharge_Time_Elapsed = FALSE;}
-	BMU.Precharge_Timer = MsgBuf_RX1.DataA & 0xFF;
+  BMU.Driver_Status = MsgBuf_RX1.DataB >> 24;
+  BMU.Precharge_Status = (MsgBuf_RX1.DataB >> 16) & 0xFF;
+  if ((MsgBuf_RX1.DataA >> 8) & 0xFF) {BMU.Precharge_Time_Elapsed = TRUE;}
+  else                                {BMU.Precharge_Time_Elapsed = FALSE;}
+  BMU.Precharge_Timer = MsgBuf_RX1.DataA & 0xFF;
 #endif
-	break;
-	case BMU_BASE + BMU_INFO + 4:
+  break;
+  case BMU_BASE + BMU_INFO + 4:
 #if _BMU_CELL_V
-	BMU.Min_Cell_V = (MsgBuf_RX1.DataB >> 16) & 0xFFFF;
-	BMU.Max_Cell_V = MsgBuf_RX1.DataB & 0xFFFF;
-	BMU.CMU_Min_V = (MsgBuf_RX1.DataA >> 24) & 0xFF;
-	BMU.CMU_Max_V = (MsgBuf_RX1.DataA >> 8) & 0xFF;
-	BMU.Cell_Min_V = (MsgBuf_RX1.DataA >> 16) & 0xFF;
-	BMU.Cell_Max_V = MsgBuf_RX1.DataA & 0xFF;
+  BMU.Min_Cell_V = (MsgBuf_RX1.DataB >> 16) & 0xFFFF;
+  BMU.Max_Cell_V = MsgBuf_RX1.DataB & 0xFFFF;
+  BMU.CMU_Min_V = (MsgBuf_RX1.DataA >> 24) & 0xFF;
+  BMU.CMU_Max_V = (MsgBuf_RX1.DataA >> 8) & 0xFF;
+  BMU.Cell_Min_V = (MsgBuf_RX1.DataA >> 16) & 0xFF;
+  BMU.Cell_Max_V = MsgBuf_RX1.DataA & 0xFF;
 #endif
-	break;
-	case BMU_BASE + BMU_INFO + 5:
+  break;
+  case BMU_BASE + BMU_INFO + 5:
 #if _BMU_CMU_TMP
-	BMU.Max_Cell_Tmp = (MsgBuf_RX1.DataB >> 16) & 0xFFFF;
-	BMU.Max_Cell_Tmp = MsgBuf_RX1.DataB & 0xFFFF;
-	BMU.CMU_Min_Tmp = (MsgBuf_RX1.DataA >> 24) & 0xFF;
-	BMU.CMU_Max_Tmp = (MsgBuf_RX1.DataA >> 8) & 0xFF;
+  BMU.Max_Cell_Tmp = (MsgBuf_RX1.DataB >> 16) & 0xFFFF;
+  BMU.Max_Cell_Tmp = MsgBuf_RX1.DataB & 0xFFFF;
+  BMU.CMU_Min_Tmp = (MsgBuf_RX1.DataA >> 24) & 0xFF;
+  BMU.CMU_Max_Tmp = (MsgBuf_RX1.DataA >> 8) & 0xFF;
 #endif
-	break;
-	case BMU_BASE + BMU_INFO + 6:
-	BMU.Battery_V = iirFILTER_int(MsgBuf_RX1.DataB / 1000, BMU.Battery_V, IIR_GAIN_ELECTRICAL); // Packet is in mV and mA
-	BMU.Battery_I = iirFILTER_int(MsgBuf_RX1.DataA / 1000, BMU.Battery_I, IIR_GAIN_ELECTRICAL);
-	break;
-	case BMU_BASE + BMU_INFO + 7:
-	// Can extract 8 Status flags here but they are also contained with others in BASE + 9
+  break;
+  case BMU_BASE + BMU_INFO + 6:
+  BMU.Battery_V = iir_filter_int(MsgBuf_RX1.DataB / 1000, BMU.Battery_V, IIR_GAIN_ELECTRICAL); // Packet is in mV and mA
+  BMU.Battery_I = iir_filter_int(MsgBuf_RX1.DataA / 1000, BMU.Battery_I, IIR_GAIN_ELECTRICAL);
+  break;
+  case BMU_BASE + BMU_INFO + 7:
+  // Can extract 8 Status flags here but they are also contained with others in BASE + 9
 #if _BMU_BAL_THRES
-	BMU.Bal_Thres_Rising = (MsgBuf_RX1.DataB >> 16) & 0xFFFF;
-	BMU.Bal_Thres_Falling = MsgBuf_RX1.DataB & 0xFFFF;
+  BMU.Bal_Thres_Rising = (MsgBuf_RX1.DataB >> 16) & 0xFFFF;
+  BMU.Bal_Thres_Falling = MsgBuf_RX1.DataB & 0xFFFF;
 #endif
 #if _BMU_CMU_CNT
-	BMU.CMU_Count = (MsgBuf_RX1.DataA >> 16) & 0xFF;
+  BMU.CMU_Count = (MsgBuf_RX1.DataA >> 16) & 0xFF;
 #endif
 #if _BMU_VER
-	BMU.BMU_FW_Ver = MsgBuf_RX1.DataA & 0xFFFF;
+  BMU.BMU_FW_Ver = MsgBuf_RX1.DataA & 0xFFFF;
 #endif
-	break;
-	case BMU_BASE + BMU_INFO + 8:
+  break;
+  case BMU_BASE + BMU_INFO + 8:
 #if _BMU_FAN == 1
-	BMU.Fan0_Spd = (MsgBuf_RX1.DataB >> 16) & 0xFFFF;
+  BMU.Fan0_Spd = (MsgBuf_RX1.DataB >> 16) & 0xFFFF;
 #elif _BMU_FAN == 2
-	BMU.Fan1_Spd = MsgBuf_RX1.DataB & 0xFFFF;
+  BMU.Fan1_Spd = MsgBuf_RX1.DataB & 0xFFFF;
 #elif _BMU_FAN == 3
-	BMU.Fan0_Spd = (MsgBuf_RX1.DataB >> 16) & 0xFFFF;
-	BMU.Fan1_Spd = MsgBuf_RX1.DataB & 0xFFFF;
+  BMU.Fan0_Spd = (MsgBuf_RX1.DataB >> 16) & 0xFFFF;
+  BMU.Fan1_Spd = MsgBuf_RX1.DataB & 0xFFFF;
 #endif
 #if _BMU_12V_CONSUM
-	BMU.Fan_Contactor_12V_mA = (MsgBuf_RX1.DataA >> 16) & 0xFFFF;
-	BMU.CMU_12V_mA = MsgBuf_RX1.DataA & 0xFFFF;
+  BMU.Fan_Contactor_12V_mA = (MsgBuf_RX1.DataA >> 16) & 0xFFFF;
+  BMU.CMU_12V_mA = MsgBuf_RX1.DataA & 0xFFFF;
 #endif
-	break;
-	case BMU_BASE + BMU_INFO + 9:
-	BMU.Status = MsgBuf_RX1.DataB;
+  break;
+  case BMU_BASE + BMU_INFO + 9:
+  BMU.Status = MsgBuf_RX1.DataB;
 #if _BMU_VER
-	BMU.BMU_HW_Ver = (MsgBuf_RX1.DataA >> 24) & 0xFF;
-	BMU.BMU_Model_ID = (MsgBuf_RX1.DataA >> 16) & 0xFF;
+  BMU.BMU_HW_Ver = (MsgBuf_RX1.DataA >> 24) & 0xFF;
+  BMU.BMU_Model_ID = (MsgBuf_RX1.DataA >> 16) & 0xFF;
 #endif
-	break;
+  break;
 
-	default:
-		break;
-	}
-	LPC_CAN1->CMR = 0x4; // Release Receive Buffer
+  default:
+    break;
+  }
+  LPC_CAN1->CMR = 0x4; // Release Receive Buffer
 }
 
 /******************************************************************************
-** Function name:		CAN_ISR_Rx2
+** Function name:   CAN_ISR_Rx2
 **
-** Descriptions:		CAN Rx2 interrupt handler
+** Description:     CAN Rx2 interrupt handler
 **
-** parameters:			None
-** Returned value:		None
+** Parameters:      None
+** Returned value:  None
 **
 ******************************************************************************/
 void CAN_ISR_Rx2( void )
@@ -307,12 +306,12 @@ void CAN_ISR_Rx2( void )
 }
 
 /*****************************************************************************
-** Function name:		CAN_Handler
+** Function name:   CAN_Handler
 **
-** Descriptions:		CAN interrupt handler
+** Descriptions:    CAN interrupt handler
 **
-** parameters:			None
-** Returned value:		None
+** parameters:      None
+** Returned value:  None
 **
 *****************************************************************************/
 void CAN_IRQHandler(void)
@@ -320,35 +319,35 @@ void CAN_IRQHandler(void)
   CANStatus = LPC_CANCR->CANRxSR;
   if ( CANStatus & (1 << 8) )
   {
-	CAN1RxCount++;
-	CAN_ISR_Rx1();
+  CAN1RxCount++;
+  CAN_ISR_Rx1();
   }
   if ( CANStatus & (1 << 9) )
   {
-	CAN2RxCount++;
-	CAN_ISR_Rx2();
+  CAN2RxCount++;
+  CAN_ISR_Rx2();
   }
   if ( LPC_CAN1->GSR & (1 << 6 ) )
   {
-	/* The error count includes both TX and RX */
-	CAN1ErrCount = LPC_CAN1->GSR >> 16;
+  /* The error count includes both TX and RX */
+  CAN1ErrCount = LPC_CAN1->GSR >> 16;
   }
   if ( LPC_CAN2->GSR & (1 << 6 ) )
   {
-	/* The error count includes both TX and RX */
-	CAN2ErrCount = LPC_CAN2->GSR >> 16;
+  /* The error count includes both TX and RX */
+  CAN2ErrCount = LPC_CAN2->GSR >> 16;
   }
   return;
 }
 
 #if CAN_WAKEUP
 /******************************************************************************
-** Function name:		CANActivity_IRQHandler
+** Function name:   CANActivity_IRQHandler
 **
-** Descriptions:		Wake up from CAN handler
+** Descriptions:    Wake up from CAN handler
 **
-** parameters:			None
-** Returned value:		None
+** parameters:      None
+** Returned value:  None
 **
 ******************************************************************************/
 void CANActivity_IRQHandler (void)
@@ -364,12 +363,12 @@ void CANActivity_IRQHandler (void)
 #endif
 
 /******************************************************************************
-** Function name:		CAN_Init
+** Function name:   CAN_Init
 **
-** Descriptions:		Initialize CAN, install CAN interrupt handler
+** Descriptions:    Initialize CAN, install CAN interrupt handler
 **
-** parameters:			bitrate
-** Returned value:		true or false, false if initialization failed.
+** parameters:      bitrate
+** Returned value:  true or false, false if initialization failed.
 **
 ******************************************************************************/
 uint32_t CAN1_Init( uint32_t can_btr )
@@ -394,12 +393,12 @@ uint32_t CAN1_Init( uint32_t can_btr )
 }
 
 /******************************************************************************
-** Function name:		CAN_Init
+** Function name:   CAN_Init
 **
-** Descriptions:		Initialize CAN, install CAN interrupt handler
+** Descriptions:    Initialize CAN, install CAN interrupt handler
 **
-** parameters:			bitrate
-** Returned value:		true or false, false if initialization failed.
+** parameters:      bitrate
+** Returned value:  true or false, false if initialization failed.
 **
 ******************************************************************************/
 uint32_t CAN2_Init( uint32_t can_btr )
@@ -424,12 +423,12 @@ uint32_t CAN2_Init( uint32_t can_btr )
 }
 
 /******************************************************************************
-** Function name:		CAN_SetACCF_Lookup
+** Function name:   CAN_SetACCF_Lookup
 **
-** Descriptions:		Initialize CAN, install CAN interrupt handler
+** Descriptions:    Initialize CAN, install CAN interrupt handler
 **
-** parameters:			bitrate
-** Returned value:		true or false, false if initialization failed.
+** parameters:      bitrate
+** Returned value:  true or false, false if initialization failed.
 **
 ******************************************************************************/
 void CAN_SetACCF_Lookup( void )
@@ -442,38 +441,38 @@ void CAN_SetACCF_Lookup( void )
   LPC_CANAF->SFF_sa = address;
   for ( i = 0; i < ACCF_IDEN_NUM; i += 2 )
   {
-	ID_low = (i << 29) | (MPPT1_BASE << 16);
-	ID_high = ((i+1) << 13) | (MPPT1_BASE << 0);
-	*((volatile uint32_t *)(LPC_CANAF_RAM_BASE + address)) = ID_low | ID_high;
-	address += 4;
+  ID_low = (i << 29) | (MPPT1_BASE << 16);
+  ID_high = ((i+1) << 13) | (MPPT1_BASE << 0);
+  *((volatile uint32_t *)(LPC_CANAF_RAM_BASE + address)) = ID_low | ID_high;
+  address += 4;
   }
 
   /* Set group standard Frame */
   LPC_CANAF->SFF_GRP_sa = address;
   for ( i = 0; i < ACCF_IDEN_NUM; i += 2 )
   {
-	ID_low = (i << 29) | (GRP_STD_ID << 16);
-	ID_high = ((i+1) << 13) | (GRP_STD_ID << 0);
-	*((volatile uint32_t *)(LPC_CANAF_RAM_BASE + address)) = ID_low | ID_high;
-	address += 4;
+  ID_low = (i << 29) | (GRP_STD_ID << 16);
+  ID_high = ((i+1) << 13) | (GRP_STD_ID << 0);
+  *((volatile uint32_t *)(LPC_CANAF_RAM_BASE + address)) = ID_low | ID_high;
+  address += 4;
   }
 
   /* Set explicit extended Frame */
   LPC_CANAF->EFF_sa = address;
   for ( i = 0; i < ACCF_IDEN_NUM; i++  )
   {
-	ID_low = (i << 29) | (EXP_EXT_ID << 0);
-	*((volatile uint32_t *)(LPC_CANAF_RAM_BASE + address)) = ID_low;
-	address += 4;
+  ID_low = (i << 29) | (EXP_EXT_ID << 0);
+  *((volatile uint32_t *)(LPC_CANAF_RAM_BASE + address)) = ID_low;
+  address += 4;
   }
 
   /* Set group extended Frame */
   LPC_CANAF->EFF_GRP_sa = address;
   for ( i = 0; i < ACCF_IDEN_NUM; i++  )
   {
-	ID_low = (i << 29) | (GRP_EXT_ID << 0);
-	*((volatile uint32_t *)(LPC_CANAF_RAM_BASE + address)) = ID_low;
-	address += 4;
+  ID_low = (i << 29) | (GRP_EXT_ID << 0);
+  *((volatile uint32_t *)(LPC_CANAF_RAM_BASE + address)) = ID_low;
+  address += 4;
   }
 
   /* Set End of Table */
@@ -482,12 +481,12 @@ void CAN_SetACCF_Lookup( void )
 }
 
 /******************************************************************************
-** Function name:		CAN_SetACCF
+** Function name:   CAN_SetACCF
 **
-** Descriptions:		Set acceptance filter and SRAM associated with
+** Descriptions:    Set acceptance filter and SRAM associated with
 **
-** parameters:			ACMF mode
-** Returned value:		None
+** parameters:      ACMF mode
+** Returned value:  None
 **
 **
 ******************************************************************************/
@@ -495,39 +494,39 @@ void CAN_SetACCF( uint32_t ACCFMode )
 {
   switch ( ACCFMode )
   {
-	case ACCF_OFF:
-	  LPC_CANAF->AFMR = ACCFMode;
-	  LPC_CAN1->MOD = LPC_CAN2->MOD = 1;	// Reset CAN
-	  LPC_CAN1->IER = LPC_CAN2->IER = 0;	// Disable Receive Interrupt
-	  LPC_CAN1->GSR = LPC_CAN2->GSR = 0;	// Reset error counter when CANxMOD is in reset
-	break;
+  case ACCF_OFF:
+    LPC_CANAF->AFMR = ACCFMode;
+    LPC_CAN1->MOD = LPC_CAN2->MOD = 1;  // Reset CAN
+    LPC_CAN1->IER = LPC_CAN2->IER = 0;  // Disable Receive Interrupt
+    LPC_CAN1->GSR = LPC_CAN2->GSR = 0;  // Reset error counter when CANxMOD is in reset
+  break;
 
-	case ACCF_BYPASS:
-	  LPC_CANAF->AFMR = ACCFMode;
-	break;
+  case ACCF_BYPASS:
+    LPC_CANAF->AFMR = ACCFMode;
+  break;
 
-	case ACCF_ON:
-	case ACCF_FULLCAN:
-	  LPC_CANAF->AFMR = ACCF_OFF;
-	  CAN_SetACCF_Lookup();
-	  LPC_CANAF->AFMR = ACCFMode;
-	break;
+  case ACCF_ON:
+  case ACCF_FULLCAN:
+    LPC_CANAF->AFMR = ACCF_OFF;
+    CAN_SetACCF_Lookup();
+    LPC_CANAF->AFMR = ACCFMode;
+  break;
 
-	default:
-	break;
+  default:
+  break;
   }
   return;
 }
 
 /******************************************************************************
-** Function name:		CAN1_SendMessage
+** Function name:   CAN1_SendMessage
 **
-** Descriptions:		Send message block to CAN1
+** Descriptions:    Send message block to CAN1
 **
-** parameters:			pointer to the CAN message
-** Returned value:		true or false, if message buffer is available,
-**						message can be sent successfully, return TRUE,
-**						otherwise, return FALSE.
+** parameters:      pointer to the CAN message
+** Returned value:  true or false, if message buffer is available,
+**                  message can be sent successfully, return TRUE,
+**                  otherwise, return FALSE.
 **
 ******************************************************************************/
 uint32_t CAN1_SendMessage( CAN_MSG *pTxBuf )
@@ -538,43 +537,43 @@ uint32_t CAN1_SendMessage( CAN_MSG *pTxBuf )
   CANStatus = LPC_CAN1->SR;
   if ( CANStatus & 0x00000004 )
   {
-	LPC_CAN1->TFI1 = pTxBuf->Frame & 0xC00F0000;
-	LPC_CAN1->TID1 = pTxBuf->MsgID;
-	LPC_CAN1->TDA1 = pTxBuf->DataA;
-	LPC_CAN1->TDB1 = pTxBuf->DataB;
-	LPC_CAN1->CMR |= 0x21;
-	return ( TRUE );
+  LPC_CAN1->TFI1 = pTxBuf->Frame & 0xC00F0000;
+  LPC_CAN1->TID1 = pTxBuf->MsgID;
+  LPC_CAN1->TDA1 = pTxBuf->DataA;
+  LPC_CAN1->TDB1 = pTxBuf->DataB;
+  LPC_CAN1->CMR |= 0x21;
+  return ( TRUE );
   }
   else if ( CANStatus & 0x00000400 )
   {
-	LPC_CAN1->TFI2 = pTxBuf->Frame & 0xC00F0000;
-	LPC_CAN1->TID2 = pTxBuf->MsgID;
-	LPC_CAN1->TDA2 = pTxBuf->DataA;
-	LPC_CAN1->TDB2 = pTxBuf->DataB;
-	LPC_CAN1->CMR |= 0x41;
-	return ( TRUE );
+  LPC_CAN1->TFI2 = pTxBuf->Frame & 0xC00F0000;
+  LPC_CAN1->TID2 = pTxBuf->MsgID;
+  LPC_CAN1->TDA2 = pTxBuf->DataA;
+  LPC_CAN1->TDB2 = pTxBuf->DataB;
+  LPC_CAN1->CMR |= 0x41;
+  return ( TRUE );
   }
   else if ( CANStatus & 0x00040000 )
   {
-	LPC_CAN1->TFI3 = pTxBuf->Frame & 0xC00F0000;
-	LPC_CAN1->TID3 = pTxBuf->MsgID;
-	LPC_CAN1->TDA3 = pTxBuf->DataA;
-	LPC_CAN1->TDB3 = pTxBuf->DataB;
-	LPC_CAN1->CMR |= 0x81;
-	return ( TRUE );
+  LPC_CAN1->TFI3 = pTxBuf->Frame & 0xC00F0000;
+  LPC_CAN1->TID3 = pTxBuf->MsgID;
+  LPC_CAN1->TDA3 = pTxBuf->DataA;
+  LPC_CAN1->TDB3 = pTxBuf->DataB;
+  LPC_CAN1->CMR |= 0x81;
+  return ( TRUE );
   }
   return ( FALSE );
 }
 
 /******************************************************************************
-** Function name:		CAN2_SendMessage
+** Function name:   CAN2_SendMessage
 **
-** Descriptions:		Send message block to CAN2
+** Descriptions:    Send message block to CAN2
 **
-** parameters:			pointer to the CAN message
-** Returned value:		true or false, if message buffer is available,
-**						message can be sent successfully, return TRUE,
-**						otherwise, return FALSE.
+** parameters:      pointer to the CAN message
+** Returned value:  true or false, if message buffer is available,
+**                  message can be sent successfully, return TRUE,
+**                  otherwise, return FALSE.
 **
 ******************************************************************************/
 uint32_t CAN2_SendMessage( CAN_MSG *pTxBuf )
@@ -585,70 +584,70 @@ uint32_t CAN2_SendMessage( CAN_MSG *pTxBuf )
   CANStatus = LPC_CAN2->SR;
   if ( CANStatus & 0x00000004 )
   {
-	LPC_CAN2->TFI1 = pTxBuf->Frame & 0xC00F0000;
-	LPC_CAN2->TID1 = pTxBuf->MsgID;
-	LPC_CAN2->TDA1 = pTxBuf->DataA;
-	LPC_CAN2->TDB1 = pTxBuf->DataB;
-	LPC_CAN2->CMR |= 0x21;
-	return ( TRUE );
+  LPC_CAN2->TFI1 = pTxBuf->Frame & 0xC00F0000;
+  LPC_CAN2->TID1 = pTxBuf->MsgID;
+  LPC_CAN2->TDA1 = pTxBuf->DataA;
+  LPC_CAN2->TDB1 = pTxBuf->DataB;
+  LPC_CAN2->CMR |= 0x21;
+  return ( TRUE );
   }
   else if ( CANStatus & 0x00000400 )
   {
-	LPC_CAN2->TFI2 = pTxBuf->Frame & 0xC00F0000;
-	LPC_CAN2->TID2 = pTxBuf->MsgID;
-	LPC_CAN2->TDA2 = pTxBuf->DataA;
-	LPC_CAN2->TDB2 = pTxBuf->DataB;
-	LPC_CAN2->CMR |= 0x41;
-	return ( TRUE );
+  LPC_CAN2->TFI2 = pTxBuf->Frame & 0xC00F0000;
+  LPC_CAN2->TID2 = pTxBuf->MsgID;
+  LPC_CAN2->TDA2 = pTxBuf->DataA;
+  LPC_CAN2->TDB2 = pTxBuf->DataB;
+  LPC_CAN2->CMR |= 0x41;
+  return ( TRUE );
   }
   else if ( CANStatus & 0x00040000 )
   {
-	LPC_CAN2->TFI3 = pTxBuf->Frame & 0xC00F0000;
-	LPC_CAN2->TID3 = pTxBuf->MsgID;
-	LPC_CAN2->TDA3 = pTxBuf->DataA;
-	LPC_CAN2->TDB3 = pTxBuf->DataB;
-	LPC_CAN2->CMR |= 0x81;
-	return ( TRUE );
+  LPC_CAN2->TFI3 = pTxBuf->Frame & 0xC00F0000;
+  LPC_CAN2->TID3 = pTxBuf->MsgID;
+  LPC_CAN2->TDA3 = pTxBuf->DataA;
+  LPC_CAN2->TDB3 = pTxBuf->DataB;
+  LPC_CAN2->CMR |= 0x81;
+  return ( TRUE );
   }
   return ( FALSE );
 }
 
 void setCANBUS1(void)
 {
-	CAN1_Init( BITRATE500K30MHZ );
+  CAN1_Init( BITRATE500K30MHZ );
 
-	/* Test Acceptance Filter */
-	/* Even though the filter RAM is set for all type of identifiers,
-	the test module tests explicit standard identifier only */
-	MsgBuf_TX1.Frame = 0x00080000; /* 11-bit, no RTR, DLC is 8 bytes */
-	MsgBuf_TX1.MsgID = 0x0; /* Explicit Standard ID */
-	MsgBuf_TX1.DataA = 0x0;
-	MsgBuf_TX1.DataB = 0x0;
+  /* Test Acceptance Filter */
+  /* Even though the filter RAM is set for all type of identifiers,
+  the test module tests explicit standard identifier only */
+  MsgBuf_TX1.Frame = 0x00080000; /* 11-bit, no RTR, DLC is 8 bytes */
+  MsgBuf_TX1.MsgID = 0x0; /* Explicit Standard ID */
+  MsgBuf_TX1.DataA = 0x0;
+  MsgBuf_TX1.DataB = 0x0;
 
-	MsgBuf_RX1.Frame = 0x0;
-	MsgBuf_RX1.MsgID = 0x0;
-	MsgBuf_RX1.DataA = 0x0;
-	MsgBuf_RX1.DataB = 0x0;
+  MsgBuf_RX1.Frame = 0x0;
+  MsgBuf_RX1.MsgID = 0x0;
+  MsgBuf_RX1.DataA = 0x0;
+  MsgBuf_RX1.DataB = 0x0;
 
-	CAN_SetACCF( ACCF_BYPASS );
+  CAN_SetACCF( ACCF_BYPASS );
 }
 
 void setCANBUS2(void)
 {
-	CAN2_Init( BITRATE125K30MHZ );
+  CAN2_Init( BITRATE125K30MHZ );
 
-	/* Test Acceptance Filter */
-	/* Even though the filter RAM is set for all type of identifiers,
-	the test module tests explicit standard identifier only */
-	MsgBuf_TX2.Frame = 0x00080000; /* 11-bit, no RTR, DLC is 8 bytes */
-	MsgBuf_TX2.MsgID = MPPT1_BASE; /* Explicit Standard ID */
-	MsgBuf_TX2.DataA = 0x00000000;
-	MsgBuf_TX2.DataB = 0x00000000;
+  /* Test Acceptance Filter */
+  /* Even though the filter RAM is set for all type of identifiers,
+  the test module tests explicit standard identifier only */
+  MsgBuf_TX2.Frame = 0x00080000; /* 11-bit, no RTR, DLC is 8 bytes */
+  MsgBuf_TX2.MsgID = MPPT1_BASE; /* Explicit Standard ID */
+  MsgBuf_TX2.DataA = 0x00000000;
+  MsgBuf_TX2.DataB = 0x00000000;
 
-	MsgBuf_RX2.Frame = 0x0;
-	MsgBuf_RX2.MsgID = 0x0;
-	MsgBuf_RX2.DataA = 0x0;
-	MsgBuf_RX2.DataB = 0x0;
+  MsgBuf_RX2.Frame = 0x0;
+  MsgBuf_RX2.MsgID = 0x0;
+  MsgBuf_RX2.DataA = 0x0;
+  MsgBuf_RX2.DataB = 0x0;
 
-	CAN_SetACCF( ACCF_BYPASS );
+  CAN_SetACCF( ACCF_BYPASS );
 }

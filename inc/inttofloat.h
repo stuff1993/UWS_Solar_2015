@@ -12,9 +12,9 @@
 
 union
 {
-	uint32_t 	_uint;
-	int32_t		_int;
-	float		_float;
+  uint32_t  _uint;
+  int32_t   _int;
+  float     _float;
 }_converter;
 
 float conv_uint_float(uint32_t _inVal);

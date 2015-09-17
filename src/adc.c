@@ -1,8 +1,7 @@
 /****************************************************************************
  *   adc driver UWS                      $
-****************************************************************************/
+ ****************************************************************************/
 #include "lpc17xx.h"
-//#include "type.h"
 #include "adc.h"
 
 #ifndef _BV
@@ -19,14 +18,14 @@ volatile uint32_t channel_flag = 0;
 #endif
 
 /*****************************************************************************
-** Function name:		ADCInit
-**
-** Descriptions:		initialize ADC channel
-**
-** parameters:			ADC clock rate
-** Returned value:		None
-** 
-*****************************************************************************/
+ ** Function name:   ADCInit
+ **
+ ** Descriptions:    initialize ADC channel
+ **
+ ** parameters:      ADC clock rate
+ ** Returned value:  None
+ **
+ *****************************************************************************/
 void ADCInit( uint32_t ADC_Clk )
 {
   uint32_t i, pclkdiv, pclk;
@@ -36,7 +35,7 @@ void ADCInit( uint32_t ADC_Clk )
 
   for ( i = 0; i < ADC_NUM; i++ )
   {
-	ADCValue[i] = 0x0;
+    ADCValue[i] = 0x0;
   }
 
   /* all the related pins are set to ADC inputs, AD0.0~7 */
@@ -63,42 +62,42 @@ void ADCInit( uint32_t ADC_Clk )
   pclkdiv = (LPC_SC->PCLKSEL0 >> 24) & 0x03;
   switch ( pclkdiv )
   {
-	case 0x00:
-	default:
-	  pclk = SystemCoreClock/4;
-	break;
-	case 0x01:
-	  pclk = SystemCoreClock;
-	break; 
-	case 0x02:
-	  pclk = SystemCoreClock/2;
-	break; 
-	case 0x03:
-	  pclk = SystemCoreClock/8;
-	break;
+    case 0x00:
+    default:
+      pclk = SystemCoreClock/4;
+      break;
+    case 0x01:
+      pclk = SystemCoreClock;
+      break;
+    case 0x02:
+      pclk = SystemCoreClock/2;
+      break;
+    case 0x03:
+      pclk = SystemCoreClock/8;
+      break;
   }
 
-  LPC_ADC->ADCR = ( 0x01 << 0 ) |  /* SEL=1,select channel 0~7 on ADC0 */
-		( ( pclk  / ADC_Clk - 1 ) << 8 ) |  /* CLKDIV = Fpclk / ADC_Clk - 1 */ 
-		( 0 << 16 ) | 		/* BURST = 0, no BURST, software controlled */
-		( 0 << 17 ) |  		/* CLKS = 0, 11 clocks/10 bits */
-		( 1 << 21 ) |  		/* PDN = 1, normal operation */
-		( 0 << 24 ) |  		/* START = 0 A/D conversion stops */
-		( 0 << 27 );		/* EDGE = 0 (CAP/MAT singal falling,trigger A/D conversion) */ 
+  LPC_ADC->ADCR = ( 0x01 << 0 ) |       /* SEL=1,select channel 0~7 on ADC0 */
+      ( ( pclk  / ADC_Clk - 1 ) << 8 ) |  /* CLKDIV = Fpclk / ADC_Clk - 1 */
+      ( 0 << 16 ) |                       /* BURST = 0, no BURST, software controlled */
+      ( 0 << 17 ) |                       /* CLKS = 0, 11 clocks/10 bits */
+      ( 1 << 21 ) |                       /* PDN = 1, normal operation */
+      ( 0 << 24 ) |                       /* START = 0 A/D conversion stops */
+      ( 0 << 27 );                        /* EDGE = 0 (CAP/MAT singal falling,trigger A/D conversion) */
 
   /* If POLLING, no need to do the following */
   return;
 }
 
 /*****************************************************************************
-** Function name:		ADCRead
-**
-** Descriptions:		Read ADC channel
-**
-** parameters:			Channel number
-** Returned value:		Value read, if interrupt driven, return channel #
-** 
-*****************************************************************************/
+ ** Function name:   ADCRead
+ **
+ ** Descriptions:    Read ADC channel
+ **
+ ** parameters:      Channel number
+ ** Returned value:  Value read, if interrupt driven, return channel #
+ **
+ *****************************************************************************/
 uint32_t ADCRead( uint8_t channelNum )
 {
 
@@ -107,27 +106,27 @@ uint32_t ADCRead( uint8_t channelNum )
   /* channel number is 0 through 7 */
   if ( channelNum >= ADC_NUM )
   {
-	channelNum = 0;		/* reset channel number to 0 */
+    channelNum = 0; /* reset channel number to 0 */
   }
   LPC_ADC->ADCR &= 0xFFFFFF00;
   LPC_ADC->ADCR |= (1 << 24) | (1 << channelNum);
-				/* switch channel,start A/D convert */
+  /* switch channel,start A/D convert */
 
-  while ( 1 )			/* wait until end of A/D convert */
+  while ( 1 ) /* wait until end of A/D convert */
   {
-	regVal = *(&(LPC_ADC->ADDR0) + channelNum);
-	/* read result of A/D conversion */
-	if ( regVal & ADC_DONE )
-	{
-	  break;
-	}
+    regVal = *(&(LPC_ADC->ADDR0) + channelNum);
+    /* read result of A/D conversion */
+    if ( regVal & ADC_DONE )
+    {
+      break;
+    }
   }	
-        
-  LPC_ADC->ADCR &= 0xF8FFFFFF;	/* stop ADC now */
-  if ( regVal & ADC_OVERRUN )	/* save data when it's not overrun, otherwise, return zero */
+
+  LPC_ADC->ADCR &= 0xF8FFFFFF;  /* stop ADC now */
+  if ( regVal & ADC_OVERRUN ) /* save data when it's not overrun, otherwise, return zero */
   {
-	return ( 0 );
+    return ( 0 );
   }
   ADC_Data = ( regVal >> 4 ) & 0xFFF;
-  return ( ADC_Data );	/* return A/D conversion value */
+  return ( ADC_Data );  /* return A/D conversion value */
 }

@@ -2,7 +2,7 @@
  * menu.h
  *
  *  Created on: 29 May 2015
- *      Author: Stuff
+ *      Author: Stuart G
  */
 
 #ifndef MENU_H_
@@ -11,21 +11,21 @@
 #define	MAX_MENU_ITEMS 15
 #define ERROR_ITEMS 4
 
-#define EROW 	"                    "
+#define EROW  "                    "
 #define SELECTOR ">>"
 #define DESELECTOR "  "
 
 struct MENUS
 {
-	void (*menus[MAX_MENU_ITEMS]) (void);
-	void (*errors[ERROR_ITEMS]) (void);
-	uint8_t driver;
-	uint8_t menu_items;
-	uint8_t menu_pos;
-	uint8_t submenu_items;
-	uint8_t submenu_pos;
-	uint8_t flags;
-	uint32_t counter;
+  void (*menus[MAX_MENU_ITEMS]) (void);
+  void (*errors[ERROR_ITEMS]) (void);
+  uint8_t driver;
+  uint8_t menu_items;
+  uint8_t menu_pos;
+  uint8_t submenu_items;
+  uint8_t submenu_pos;
+  uint8_t flags;
+  uint32_t counter;
 }menu;
 
 #define MENU_SELECTED       ((menu.flags & 0x01) >> 0)
@@ -56,31 +56,33 @@ struct MENUS
 #define CLR_MENU_UNUSED_7   menu.flags &= 0x7F;
 
 // startup screens
-void lcd_display_errOnStart(void);
-void lcd_display_driver(void);
-void lcd_display_intro(void);
+void menu_errOnStart(void);
+void menu_driver(void);
+void menu_intro(void);
 
 // menus array
-void lcd_display_info(void);
-void lcd_display_escBus(void);
-void lcd_display_home(void);
-void lcd_display_drive(void);
-void lcd_display_cruise(void);
-void lcd_display_MPPT1(void);
-void lcd_display_MPPT2(void);
-void lcd_display_MPPTPower(void);
-void lcd_display_motor(void);
-void lcd_display_debug(void);
-void lcd_display_errors(void);
-void lcd_display_options(void);
-void lcd_display_peaks(void);
-void lcd_display_runtime(void);
-void lcd_display_odometer(void);
+void menu_info(void);
+void menu_escBus(void);
+void menu_home(void);
+void menu_controls(void);
+void menu_cruise(void);
+void menu_MPPT1(void);
+void menu_MPPT2(void);
+void menu_MPPTPower(void);
+void menu_motor(void);
+void menu_debug(void);
+void menu_config(void);
+void menu_errors(void);
+void menu_options(void);
+void menu_peaks(void);
+void menu_runtime(void);
+void menu_odometer(void);
 
 // errors array
-void lcd_display_SWOC(void);
-void lcd_display_HWOC(void);
-void lcd_display_COMMS(void);
+void menu_swoc(void);
+void menu_hwoc(void);
+void menu_comms(void);
+void menu_battery_error(void);
 
 void _lcd_putTitle(char*);
 void _lcd_padding(int row, int pos, int len);

@@ -127,48 +127,48 @@ explicit EXT IDs, and group EXT IDs. */
 #define ACCF_IDEN_NUM			4
 
 /* Identifiers for FULLCAN, EXP STD, GRP STD, EXP EXT, GRP EXT */
-//#define MPPT_RPLY				0x060		// Distance to MPPT reply packet 0b000001100000
+//#define MPPT_RPLY     0x060   // Distance to MPPT reply packet 0b000001100000
 
 
 /// CAN BASE ADDRESSES
 #ifndef ESC_BASE
-#define ESC_BASE				0x400			// Base address of motor controller
+#define ESC_BASE        0x400               // Base address of motor controller
 #endif
 
 #ifndef ESC_CONTROL
-#define ESC_CONTROL				0x500			// Base for control packets for motor controller(s)
+#define ESC_CONTROL     0x500               // Base for control packets for motor controller(s)
 #endif
 
 #ifndef DASH_RPLY
-#define DASH_RPLY				0x510			// Messages from dash
+#define DASH_RPLY       0x510               // Messages from dash
 #endif
 
 #ifndef DASH_RQST
-#define DASH_RQST				0x520			// Messages to dash
+#define DASH_RQST       0x520               // Messages to dash
 #endif
 
 #ifndef BMU_BASE
-#define BMU_BASE 				0x600			// BMU Base
+#define BMU_BASE        0x600               // BMU Base
 #endif
 
 #ifndef MPP1_BASE
-#define MPPT1_BASE				0x716			// DriveTek Master Request 0b011100010110
+#define MPPT1_BASE      0x716               // DriveTek Master Request 0b011100010110
 #endif
 
 #ifndef MPPT2_BASE
-#define MPPT2_BASE				0x719			// DriveTek Master Request 0b011100011001
+#define MPPT2_BASE      0x719               // DriveTek Master Request 0b011100011001
 #endif
 
 #ifndef MPPT1_RPLY
-#define MPPT1_RPLY 				MPPT1_BASE + 0x060	// DriveTek Slave Answer Frame -- 0110 0b011101110110
+#define MPPT1_RPLY      MPPT1_BASE + 0x060  // DriveTek Slave Answer Frame -- 0110 0b011101110110
 #endif
 
 #ifndef MPPT2_RPLY
-#define MPPT2_RPLY 				MPPT2_BASE + 0x060	// DriveTek Slave Answer Frame -- 1001 0b011101111001
+#define MPPT2_RPLY      MPPT2_BASE + 0x060  // DriveTek Slave Answer Frame -- 1001 0b011101111001
 #endif
 
 
-#define BMU_INFO 				0xF4			// Add to base to skip CMU packets from BMU
+#define BMU_INFO        0xF4                // Add to base to skip CMU packets from BMU
 
 #define GRP_STD_ID				0x200
 #define EXP_EXT_ID				0x100000

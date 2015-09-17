@@ -2,7 +2,7 @@
  * inttofloat.c
  *
  *  Created on: 21 Jul 2015
- *      Author: Stuff
+ *      Author: Stuart G
  */
 
 #include "inttofloat.h"
