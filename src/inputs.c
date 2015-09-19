@@ -71,7 +71,7 @@ uint8_t btn_release_decrement(void)
 uint8_t btn_release_left(void)
 {
   if(LEFT || INPUTS_LEFT_DWN){
-    if(!SELECT && INPUTS_LEFT_DWN){CLR_INPUTS_LEFT_DWN;return 1;}
+    if(!LEFT && INPUTS_LEFT_DWN){CLR_INPUTS_LEFT_DWN;return 1;}
     else{SET_INPUTS_LEFT_DWN;}}
   return 0;
 }
@@ -88,7 +88,7 @@ uint8_t btn_release_left(void)
 uint8_t btn_release_right(void)
 {
   if(RIGHT || INPUTS_RIGHT_DWN){
-    if(!SELECT && INPUTS_RIGHT_DWN){CLR_INPUTS_RIGHT_DWN;return 1;}
+    if(!RIGHT && INPUTS_RIGHT_DWN){CLR_INPUTS_RIGHT_DWN;return 1;}
     else{SET_INPUTS_RIGHT_DWN;}}
   return 0;
 }
@@ -279,12 +279,12 @@ uint8_t btn_release_left_right(void)
       SET_INPUTS_RIGHT_DWN;
       SET_INPUTS_LEFT_DWN;
     }
-    else if(!LEFT && INPUTS_DEC_DWN)
+    else if(!LEFT && INPUTS_LEFT_DWN)
     {
       CLR_INPUTS_LEFT_DWN;
       return 1;
     }
-    else if(!RIGHT && INPUTS_SEL_DWN)
+    else if(!RIGHT && INPUTS_RIGHT_DWN)
     {
       CLR_INPUTS_RIGHT_DWN;
       return 2;

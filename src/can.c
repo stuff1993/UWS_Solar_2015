@@ -168,6 +168,18 @@ void CAN_ISR_Rx1( void )
   case DASH_RQST + 9:
   break;
 
+  case BMU_SHUNT:
+	  shunt.BusV = conv_uint_float(MsgBuf_RX1.DataA);
+	  shunt.BusI = conv_uint_float(MsgBuf_RX1.DataB);
+	  break;
+  case BMU_SHUNT + 1:
+  shunt.WattHrsOut = conv_uint_float(MsgBuf_RX1.DataA);
+  shunt.WattHrsIn = conv_uint_float(MsgBuf_RX1.DataB);
+  break;
+  case BMU_SHUNT + 2:
+  shunt.WattHrs = conv_uint_float(MsgBuf_RX1.DataA);
+  break;
+
   case BMU_BASE:
     BMU.SERIAL_NO = MsgBuf_RX1.DataA;
     break;

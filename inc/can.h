@@ -147,6 +147,10 @@ explicit EXT IDs, and group EXT IDs. */
 #define DASH_RQST       0x520               // Messages to dash
 #endif
 
+#ifndef BMU_SHUNT
+#define BMU_SHUNT		0x530				// BMU Shunt
+#endif
+
 #ifndef BMU_BASE
 #define BMU_BASE        0x600               // BMU Base
 #endif

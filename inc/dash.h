@@ -88,8 +88,8 @@
 #define RIGHT           !(LPC_GPIO0->FIOPIN & (1<<0))
 #define SELECT          !(LPC_GPIO1->FIOPIN & (1<<29))
 
-#define FORWARD         !(LPC_GPIO0->FIOPIN & (1<<11))
-#define REVERSE         !(LPC_GPIO0->FIOPIN & (1<<10))
+#define FORWARD         !(LPC_GPIO0->FIOPIN & (1<<10))
+#define REVERSE         !(LPC_GPIO0->FIOPIN & (1<<11))
 
 #define SPORTS_MODE     !(LPC_GPIO2->FIOPIN & (1<<10)) // Aux_ON
 #define ECONOMY_MODE    !(LPC_GPIO2->FIOPIN & (1<<11)) // Aux_OFF

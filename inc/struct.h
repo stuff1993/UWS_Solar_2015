@@ -332,4 +332,13 @@ struct CLOCK_STRUCT
   uint8_t   blink;  // half second toggle bit
 }clock;
 
+struct SHUNT_STRUCT
+{
+	float BusV;
+	float BusI;
+	float WattHrsIn;
+	float WattHrsOut;
+	float WattHrs;
+}shunt;
+
 #endif /* STRUCT_H_ */

@@ -566,23 +566,27 @@ void menu_motor (void)
 void menu_debug (void)
 {// TODO: TEAM - Update field names
   char buffer[20];
+  int len;
 
   _lcd_putTitle("-DEBUG-");
 
-  sprintf(buffer, "BUS E: %4.1f Whrs  ", BMU.WattHrs);
+  len = sprintf(buffer, "%5.1fWh %5.1fWh", shunt.WattHrs, BMU.WattHrs);
   lcd_putstring(1,0, buffer);
+  if(len<20){_lcd_padding(1,len, 20 - len);}
 
-  sprintf(buffer, "BUS I: %3lu Amps  ", BMU.Battery_I);
+  len = sprintf(buffer, "%5.1fA  %5.1fA", shunt.BusI, BMU.Battery_I);
   lcd_putstring(2,0, buffer);
+  if(len<20){_lcd_padding(1,len, 20 - len);}
 
-  sprintf(buffer, "BUS P: %4lu Watts  ", BMU.Watts);
+  len = sprintf(buffer, "%5.1fV  %5.1fV", shunt.BusV, BMU.Battery_V);
   lcd_putstring(3,0, buffer);
-
+  if(len<20){_lcd_padding(1,len, 20 - len);}
+/*
   if(btn_release_inc_sel() == 3)
   {
       BMU.WattHrs = 0;
       buzzer(50);
-  }
+  }*/
 }
 
 /******************************************************************************
@@ -670,13 +674,18 @@ void menu_config (void)
             sprintf(buffer, "MPPT2_RPLY    %#05x ", MPPT2_RPLY);
             lcd_putstring(3,0, buffer);
             break;
+          case 3:
+        	sprintf(buffer, "BMU_SHUNT     %#05x ", BMU_SHUNT);
+        	lcd_putstring(1,0, buffer);
+        	lcd_putstring(2,0, EROW);
+        	lcd_putstring(3,0, EROW);
         }
         break;
       case 1:
         _lcd_putTitle("-OTHER-");
-        sprintf(buffer, "AUTO_SWOC       %1d ", AUTO_SWOC);
+        sprintf(buffer, "AUTO_SWOC       %1d   ", AUTO_SWOC);
         lcd_putstring(1,0, buffer);
-        sprintf(buffer, "WHEEL D (M)   %5.0f ", WHEEL_D_M);
+        sprintf(buffer, "WHEEL D (M)   %5.3f ", WHEEL_D_M);
         lcd_putstring(2,0, buffer);
         lcd_putstring(3,0, EROW);
         break;
@@ -710,6 +719,7 @@ void menu_config (void)
             lcd_putstring(3,0, EROW);
             break;
         }
+        break;
           case 3:
         _lcd_putTitle("-LIMITS-");
         switch(scroll)
@@ -749,30 +759,7 @@ void menu_config (void)
       {
         default:
         case 0:
-          menu_inc(&scroll, 3);
-          break;
-        case 1:
-          break;
-        case 2:
-          menu_inc(&scroll, 3);
-          break;
-        case 3:
-          menu_inc(&scroll, 2);
-          break;
-      }
-    }
-    else{menu_inc(&menu.submenu_pos, menu.submenu_items);}
-  }
-
-  if(btn_release_decrement())
-  {
-    if(MENU_SELECTED)
-    {
-      switch(menu.submenu_pos)
-      {
-        default:
-        case 0:
-          menu_dec(&scroll, 3);
+          menu_dec(&scroll, 4);
           break;
         case 1:
           break;
@@ -785,6 +772,29 @@ void menu_config (void)
       }
     }
     else{menu_dec(&menu.submenu_pos, menu.submenu_items);}
+  }
+
+  if(btn_release_decrement())
+  {
+    if(MENU_SELECTED)
+    {
+      switch(menu.submenu_pos)
+      {
+        default:
+        case 0:
+          menu_inc(&scroll, 4);
+          break;
+        case 1:
+          break;
+        case 2:
+          menu_inc(&scroll, 3);
+          break;
+        case 3:
+          menu_inc(&scroll, 2);
+          break;
+      }
+    }
+    else{menu_inc(&menu.submenu_pos, menu.submenu_items);}
   }
 }
 
@@ -801,11 +811,13 @@ void menu_config (void)
 void menu_errors (void)
 {
   char buffer[20];
+  int len;
 
   _lcd_putTitle("-FAULTS-");
 
-  sprintf(buffer, "ESC: %d", esc.ERROR);
+  len = sprintf(buffer, "ESC: %d", esc.ERROR);
   lcd_putstring(1,0, buffer);
+  if(len>20){_lcd_padding(1,len, 20 - len);}
 
   sprintf(buffer, "MPPT: %#05x", ((mppt2.flags & 0x03 ? 1 : 0) << 9)|((mppt1.flags & 0x03 ? 1 : 0) << 8)|(mppt1.flags & 0x3C << 2)|((mppt2.flags & 0x3C) >> 2));
   lcd_putstring(2,0, buffer);
@@ -842,7 +854,7 @@ void menu_options (void)
 {
   char buffer[20];
   int len;
-  menu.submenu_items = 2;
+  menu.submenu_items = 3;
 
   _lcd_putTitle("-OPTIONS-");
 
@@ -923,8 +935,7 @@ void menu_options (void)
       switch(menu.submenu_pos)
       {
         case 0:
-          if(STATS_BUZZER){CLR_STATS_BUZZER;}
-          else{SET_STATS_BUZZER;}
+          stats.flags ^= 0x02;
           break;
         case 1:
           menu.driver = (menu.driver + 1) % 4;
@@ -946,8 +957,7 @@ void menu_options (void)
       switch(menu.submenu_pos)
       {
         case 0:
-          if(STATS_BUZZER){CLR_STATS_BUZZER;}
-          else{SET_STATS_BUZZER;}
+          stats.flags ^= 0x02;
           break;
         case 1:
           menu.driver = (menu.driver + 3) % 4;
@@ -1342,7 +1352,7 @@ void menu_init (void)
       break;
     default:
     case 1: // TEST
-      menu.menu_items = 15;
+      menu.menu_items = 16;
       menu.menus[0] = menu_home;
       menu.menus[1] = menu_controls;
       menu.menus[2] = menu_cruise;
@@ -1353,11 +1363,12 @@ void menu_init (void)
       menu.menus[7] = menu_debug;
       menu.menus[8] = menu_errors;
       menu.menus[9] = menu_options;
-      menu.menus[10] = menu_peaks;
-      menu.menus[11] = menu_runtime;
-      menu.menus[12] = menu_odometer;
-      menu.menus[13] = menu_info;
-      menu.menus[14] = menu_escBus;
+      menu.menus[10] = menu_config;
+      menu.menus[11] = menu_peaks;
+      menu.menus[12] = menu_runtime;
+      menu.menus[13] = menu_odometer;
+      menu.menus[14] = menu_info;
+      menu.menus[15] = menu_escBus;
       break;
     case 2: // RACE 1
       menu.menu_items = 7;

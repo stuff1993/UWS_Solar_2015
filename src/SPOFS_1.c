@@ -390,9 +390,7 @@ void main_drive (void)
   if(!MECH_BRAKE && (FORWARD || REVERSE)){
     if(STATS_CR_ACT)                                                                                                    {drive.current = 1.0;    drive.speed_rpm = stats.cruise_speed / ((60 * 3.14 * WHEEL_D_M) / 1000.0);}
     else if(!thr_pos && !rgn_pos)                                                                                       {drive.speed_rpm = 0;    drive.current = 0;}
-    else if(rgn_pos && drive.current > 0)                                                                               {                        drive.current = 0;}
-    else if(rgn_pos && (((drive.current * 1000) + REGEN_RAMP_SPEED) < rgn_pos))                                         {drive.speed_rpm = 0;    drive.current -= (REGEN_RAMP_SPEED / 1000.0);}
-    else if(rgn_pos)                                                                                                    {drive.speed_rpm = 0;    drive.current = (rgn_pos / 2);}
+    else if(rgn_pos)                                                                                                    {drive.speed_rpm = 0;    drive.current = -((float)rgn_pos / 1000.0);}
     else if(thr_pos && drive.current < 0)                                                                               {                        drive.current = 0;}
     else if(FORWARD && esc.Velocity_KMH > -5.0 && !rgn_pos && (((drive.current * 1000) + stats.ramp_speed) < thr_pos))  {drive.speed_rpm = 1500; drive.current += (stats.ramp_speed / 1000.0);}
     else if(FORWARD && esc.Velocity_KMH > -5.0 && !rgn_pos)                                                             {drive.speed_rpm = 1500; drive.current = (thr_pos / 1000.0);}
@@ -802,7 +800,7 @@ uint32_t I2C_read (uint16_t _EEadd)
   I2CStop(PORT_USED);
 
   // TODO: Test I2C timeouts
-  if(I2CMasterState[PORT_USED] == I2C_TIME_OUT){BLINKER_L_ON;}
+  if(I2CMasterState[PORT_USED] == I2C_TIME_OUT){SET_STATS_SWOC_ACK;}
 
   return (uint32_t)I2CSlaveBuffer[PORT_USED][0];
 }
@@ -859,7 +857,7 @@ void I2C_write (uint16_t _EEadd, uint8_t data0, uint8_t data1, uint8_t data2, ui
   I2CEngine( PORT_USED );
 
   // TODO: Test I2C timeouts
-  if(I2CMasterState[PORT_USED] == I2C_TIME_OUT){BLINKER_R_ON;}
+  if(I2CMasterState[PORT_USED] == I2C_TIME_OUT){SET_STATS_HWOC_ACK;}
 
   delayMs(1,2);
 }
@@ -1229,7 +1227,9 @@ int main (void)
     }
     main_mppt_poll();
     main_input_check();
-    if((stats.errors = ((0b11100111 & stats.errors) | (main_fault_check() << 3))) & (0x2 << 3)){main_drive();} // no drive on fault code 2
+    stats.errors &= 0b11100111;
+    stats.errors |= main_fault_check() << 3;
+    if(!(stats.errors & (0x2 << 3))){main_drive();} // no drive on fault code 2
     main_lights();
     main_can_handler();
     main_calc();

@@ -8,7 +8,7 @@
 #ifndef MENU_H_
 #define MENU_H_
 
-#define	MAX_MENU_ITEMS 15
+#define	MAX_MENU_ITEMS 16
 #define ERROR_ITEMS 4
 
 #define EROW  "                    "
