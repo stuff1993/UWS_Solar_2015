@@ -111,23 +111,32 @@ void SysTick_Handler (void)
     if(!(--stats.buz_tim)){BUZZER_OFF;}
   }
 
+  if(!stats.strobe_tim){TOG_STATS_STROBE}
+  else{CLR_STATS_STROBE}
+
   // MinorSec:  Time sensitive Calculations
-  esc.WattHrs += (esc.Watts/360000.0);
+  esc.watt_hrs += (esc.watts/360000.0);
 
   mppt1.WattHrs += (mppt1.Watts/360000.0);
   mppt2.WattHrs += (mppt2.Watts/360000.0);
 
-  BMU.WattHrs += (BMU.Watts/360000.0);
+  bmu.watt_hrs += (bmu.watts/360000.0);
 
-  stats.odometer += esc.Velocity_KMH/360000.0;
-  stats.odometer_tr += esc.Velocity_KMH/360000.0;
+  if(esc.velocity_kmh > 0){stats.odometer += esc.velocity_kmh/360000.0;stats.odometer_tr += esc.velocity_kmh/360000.0;}
+  else{stats.odometer -= esc.velocity_kmh/360000.0;stats.odometer_tr -= esc.velocity_kmh/360000.0;}
 
   if(clock.T_mS >= 100) // Calculate time
   {
     clock.T_mS = 0;clock.T_S++;
 
-    if((mppt1.flags & 0x03)>0){mppt1.flags |= (((mppt1.flags & 0x03) >> 0) - 1) & 0x03;} // if disconnected for 2 seconds. Then FLAG disconnect.
-    if((mppt2.flags & 0x03)>0){mppt2.flags |= (((mppt2.flags & 0x03) >> 0) - 1) & 0x03;} // if disconnected for 2 seconds. Then FLAG disconnect.
+    if((mppt1.flags & 0x03)>0){mppt1.flags ^= ((mppt1.flags & 0x03) - 1) & 0x03;} // if disconnected for 3 seconds. Then FLAG disconnect.
+    if((mppt2.flags & 0x03)>0){mppt2.flags ^= ((mppt2.flags & 0x03) - 1) & 0x03;} // if disconnected for 3 seconds. Then FLAG disconnect.
+    if(shunt.con_tim>0){shunt.con_tim--;}
+    if(MECH_BRAKE)
+    {
+      if(stats.strobe_tim>0){stats.strobe_tim--;}
+    }
+    else{stats.strobe_tim = 60;}
 
     persistent_store(); // Store data in eeprom every second
 
@@ -150,8 +159,7 @@ void SysTick_Handler (void)
  ******************************************************************************/
 void main_mppt_poll (void)
 {
-  if(STATS_MPPT_POLL){CLR_STATS_MPPT_POLL;} // Toggle bit. Selects which MPPT to poll this round
-  else{SET_STATS_MPPT_POLL;}
+  TOG_STATS_MPPT_POLL; // Toggle bit. Selects which MPPT to poll this round
 
   // 1. Sends request packet to MPPT (125K CAN Bus)
   if((LPC_CAN2->GSR & (1 << 3)) && STATS_MPPT_POLL) // Check Global Status Reg
@@ -171,10 +179,10 @@ void main_mppt_poll (void)
   {
     MsgBuf_TX1.Frame = 0x00070000;  // 11-bit, no RTR, DLC is 7 bytes
     MsgBuf_TX1.MsgID = MPPT2_RPLY;
-    if (mppt2.flags & 0x03)
+    if(mppt2.flags & 0x03)
     {
-      MsgBuf_TX1.DataA = mppt_relay2.DataA;
-      MsgBuf_TX1.DataB = mppt_relay2.DataB;
+      MsgBuf_TX1.DataA = mppt_relay2.data_a;
+      MsgBuf_TX1.DataB = mppt_relay2.data_b;
     }
     else
     {
@@ -187,10 +195,10 @@ void main_mppt_poll (void)
   {
     MsgBuf_TX1.Frame = 0x00070000;  // 11-bit, no RTR, DLC is 7 bytes
     MsgBuf_TX1.MsgID = MPPT1_RPLY;
-    if (mppt1.flags & 0x03)
+    if(mppt1.flags & 0x03)
     {
-      MsgBuf_TX1.DataA = mppt_relay1.DataA;
-      MsgBuf_TX1.DataB = mppt_relay1.DataB;
+      MsgBuf_TX1.DataA = mppt_relay1.data_a;
+      MsgBuf_TX1.DataB = mppt_relay1.data_b;
     }
     else
     {
@@ -222,8 +230,8 @@ void main_mppt_poll (void)
     mppt1.VOut = 0;
     mppt1.Watts = 0;
 
-    mppt_relay1.DataA = 0;
-    mppt_relay1.DataB = 0;
+    mppt_relay1.data_a = 0;
+    mppt_relay1.data_b = 0;
   }
 
   if(!(mppt2.flags & 0x03))
@@ -233,8 +241,8 @@ void main_mppt_poll (void)
     mppt2.VOut = 0;
     mppt2.Watts = 0;
 
-    mppt_relay2.DataA = 0;
-    mppt_relay2.DataB = 0;
+    mppt_relay2.data_a = 0;
+    mppt_relay2.data_b = 0;
   }
 }
 
@@ -257,8 +265,8 @@ void mppt_data_extract (MPPT *_MPPT, MPPT_RELAY *_fkMPPT)
   uint32_t _Data_A = MsgBuf_RX2.DataA;
   uint32_t _Data_B = MsgBuf_RX2.DataB;
 
-  _fkMPPT->DataA = _Data_A;
-  _fkMPPT->DataB = _Data_B;
+  _fkMPPT->data_a = _Data_A;
+  _fkMPPT->data_b = _Data_B;
 
   // Status Flags
   _MPPT->flags |= ((_Data_A & 0xF0) >> 2);
@@ -277,7 +285,7 @@ void mppt_data_extract (MPPT *_MPPT, MPPT_RELAY *_fkMPPT)
   _VOut = _VOut + ((_Data_B & 0xFF00) >> 8);  // Masking and shifting the lower 8 LSB
   _VOut = _VOut * 2.10;                       // Scaling
 
-  // Update the global variables after IIR filtering
+  // Update the structure after IIR filtering
   _MPPT->Tmp = iir_filter_int(((_Data_B & 0xFF0000) >> 16), _MPPT->Tmp, IIR_GAIN_THERMAL);
   _MPPT->VIn = iir_filter_int(_VIn, _MPPT->VIn, IIR_GAIN_ELECTRICAL);
   _MPPT->IIn = iir_filter_int(_IIn, _MPPT->IIn, IIR_GAIN_ELECTRICAL);
@@ -317,8 +325,8 @@ void main_input_check (void)
     else if(btn_ret == 2){menu_inc(&menu.menu_pos, menu.menu_items);}
 
     if(menu.menu_pos==0){buzzer(10);}
-    if((esc.ERROR & 0x2) && !STATS_SWOC_ACK){SET_STATS_SWOC_ACK;}
-    if((esc.ERROR & 0x1) && !STATS_HWOC_ACK){SET_STATS_HWOC_ACK;BUZZER_OFF}
+    if((esc.error & 0x2) && !STATS_SWOC_ACK){SET_STATS_SWOC_ACK;}
+    if((esc.error & 0x1) && !STATS_HWOC_ACK){SET_STATS_HWOC_ACK;BUZZER_OFF}
     if(STATS_COMMS == 1)  // send NO RESPONSE packet
     {
       if((LPC_CAN1->GSR & (1 << 3)))  // Check Global Status Reg
@@ -339,6 +347,8 @@ void main_input_check (void)
 
   if(SWITCH_IO & 0x4) {SET_STATS_DRV_MODE;stats.ramp_speed = SPORTS_RAMP_SPEED;}
   else                {CLR_STATS_DRV_MODE;stats.ramp_speed = ECONOMY_RAMP_SPEED;}
+
+  if(swt_cruise() & 0x0C){TOG_STATS_HAZARDS;}
 }
 
 /******************************************************************************
@@ -355,8 +365,8 @@ void main_input_check (void)
  ******************************************************************************/
 int main_fault_check (void)
 {
-  if(esc.ERROR || (BMU.Status & 0xD37)){drive.current = 0;drive.speed_rpm = 0;return 2;}
-  if(mppt1.flags & 0x28 || mppt2.flags & 0x28 || (BMU.Status & 0x1288)){return 1;}
+  if(esc.error || (bmu.status & 0xD37)){drive.current = 0;drive.speed_rpm = 0;return 2;}
+  if(mppt1.flags & 0x28 || mppt2.flags & 0x28 || (bmu.status & 0x1288) || (!shunt.con_tim)){return 1;}
   return 0;
 }
 
@@ -392,10 +402,10 @@ void main_drive (void)
     else if(!thr_pos && !rgn_pos)                                                                                       {drive.speed_rpm = 0;    drive.current = 0;}
     else if(rgn_pos)                                                                                                    {drive.speed_rpm = 0;    drive.current = -((float)rgn_pos / 1000.0);}
     else if(thr_pos && drive.current < 0)                                                                               {                        drive.current = 0;}
-    else if(FORWARD && esc.Velocity_KMH > -5.0 && !rgn_pos && (((drive.current * 1000) + stats.ramp_speed) < thr_pos))  {drive.speed_rpm = 1500; drive.current += (stats.ramp_speed / 1000.0);}
-    else if(FORWARD && esc.Velocity_KMH > -5.0 && !rgn_pos)                                                             {drive.speed_rpm = 1500; drive.current = (thr_pos / 1000.0);}
-    else if(REVERSE && esc.Velocity_KMH <  1.0 && !rgn_pos && (((drive.current * 1000) + stats.ramp_speed) < thr_pos))  {drive.speed_rpm = -200; drive.current += (stats.ramp_speed / 1000.0);}
-    else if(REVERSE && esc.Velocity_KMH <  1.0 && !rgn_pos)                                                             {drive.speed_rpm = -200; drive.current = (thr_pos / 1000.0);}
+    else if(FORWARD && esc.velocity_kmh > -5.0 && !rgn_pos && (((drive.current * 1000) + stats.ramp_speed) < thr_pos))  {drive.speed_rpm = 1500; drive.current += (stats.ramp_speed / 1000.0);}
+    else if(FORWARD && esc.velocity_kmh > -5.0 && !rgn_pos)                                                             {drive.speed_rpm = 1500; drive.current = (thr_pos / 1000.0);}
+    else if(REVERSE && esc.velocity_kmh <  1.0 && !rgn_pos && (((drive.current * 1000) + stats.ramp_speed) < thr_pos))  {drive.speed_rpm = -200; drive.current += (stats.ramp_speed / 1000.0);}
+    else if(REVERSE && esc.velocity_kmh <  1.0 && !rgn_pos)                                                             {drive.speed_rpm = -200; drive.current = (thr_pos / 1000.0);}
     else{drive.speed_rpm = 0; drive.current = 0;}}
   else{drive.speed_rpm = 0; drive.current = 0;CLR_STATS_CR_ACT;}
 }
@@ -424,7 +434,7 @@ void main_paddles (uint32_t _pad1, uint32_t _pad2, uint16_t *_thr, uint16_t *_rg
       // Throttle - Paddle 1
       _pad1 = (_pad1 < ((MID_PAD_V + MIN_THR_DZ) * ADC_POINTS_PER_V)) ? 0 : _pad1 - ((MID_PAD_V + MIN_THR_DZ) * ADC_POINTS_PER_V);
       _pad1 = (_pad1 * 1000) / (((HGH_PAD_V - MAX_THR_DZ) - (MID_PAD_V + MIN_THR_DZ)) * ADC_POINTS_PER_V);
-      if(esc.Velocity_KMH < LOWSPD_THRES && _pad1 > MAX_THR_LOWSPD){_pad1 = MAX_THR_LOWSPD;}
+      if(esc.velocity_kmh < LOWSPD_THRES && _pad1 > MAX_THR_LOWSPD){_pad1 = MAX_THR_LOWSPD;}
       if(!menu.driver && _pad1 > MAX_THR_DISP){_pad1 = MAX_THR_DISP;}
       if(_pad1>1000){_pad1=1000;}
       // Regen - Paddle 2
@@ -441,7 +451,7 @@ void main_paddles (uint32_t _pad1, uint32_t _pad2, uint16_t *_thr, uint16_t *_rg
       {
         _pad1 -= ((MID_PAD_V + MIN_THR_DZ) * ADC_POINTS_PER_V);
         _pad1 = (_pad1 * 1000) / (((HGH_PAD_V - MAX_THR_DZ) - (MID_PAD_V + MIN_THR_DZ)) * ADC_POINTS_PER_V);
-        if(esc.Velocity_KMH < LOWSPD_THRES && _pad1 > MAX_THR_LOWSPD){_pad1 = MAX_THR_LOWSPD;}
+        if(esc.velocity_kmh < LOWSPD_THRES && _pad1 > MAX_THR_LOWSPD){_pad1 = MAX_THR_LOWSPD;}
         if(!menu.driver && _pad1 > MAX_THR_DISP){_pad1 = MAX_THR_DISP;}
         if(_pad1>1000){_pad1=1000;}
 
@@ -486,7 +496,7 @@ void main_paddles (uint32_t _pad1, uint32_t _pad2, uint16_t *_thr, uint16_t *_rg
         _pad1 -= ((MID_PAD_V + MIN_THR_DZ) * ADC_POINTS_PER_V);
         _pad1 = (_pad1 * 1000) / (((HGH_PAD_V - MAX_THR_DZ) - (MID_PAD_V + MIN_THR_DZ)) * ADC_POINTS_PER_V);
 
-        if(esc.Velocity_KMH < LOWSPD_THRES && _pad1 > MAX_THR_LOWSPD){_pad1 = MAX_THR_LOWSPD;}
+        if(esc.velocity_kmh < LOWSPD_THRES && _pad1 > MAX_THR_LOWSPD){_pad1 = MAX_THR_LOWSPD;}
         if(!menu.driver && _pad1 > MAX_THR_DISP){_pad1 = MAX_THR_DISP;}
         if(_pad1>1000){_pad1=1000;}
 
@@ -498,7 +508,7 @@ void main_paddles (uint32_t _pad1, uint32_t _pad2, uint16_t *_thr, uint16_t *_rg
         _pad2 -= ((MID_PAD_V + MIN_THR_DZ) * ADC_POINTS_PER_V);
         _pad2 = (_pad2 * 1000) / (((HGH_PAD_V - MAX_THR_DZ) - (MID_PAD_V + MIN_THR_DZ)) * ADC_POINTS_PER_V);
 
-        if(esc.Velocity_KMH < LOWSPD_THRES && _pad2 > MAX_THR_LOWSPD){_pad2 = MAX_THR_LOWSPD;}
+        if(esc.velocity_kmh < LOWSPD_THRES && _pad2 > MAX_THR_LOWSPD){_pad2 = MAX_THR_LOWSPD;}
         if(!menu.driver && _pad2 > MAX_THR_DISP){_pad2 = MAX_THR_DISP;}
         if(_pad2>1000){_pad2=1000;}
 
@@ -522,8 +532,8 @@ void main_paddles (uint32_t _pad1, uint32_t _pad2, uint16_t *_thr, uint16_t *_rg
  ******************************************************************************/
 void main_lights (void)
 {
-  if(MECH_BRAKE || rgn_pos) {BRAKELIGHT_ON;}
-  else                      {BRAKELIGHT_OFF;}
+  if((MECH_BRAKE || rgn_pos) && !STATS_STROBE){BRAKELIGHT_ON;}
+  else                                        {BRAKELIGHT_OFF;}
 
   if(!rgn_pos)
   {
@@ -538,9 +548,9 @@ void main_lights (void)
     else            {REVERSE_OFF;NEUTRAL_ON;REGEN_OFF;DRIVE_OFF;}
   }
 
-  if((SWITCH_IO & 0x8) && (clock.blink)){BLINKER_L_ON}
+  if(((SWITCH_IO & 0x8) || STATS_HAZARDS) && (clock.blink)){BLINKER_L_ON}
   else{BLINKER_L_OFF}
-  if((SWITCH_IO & 0x10) && (clock.blink)){BLINKER_R_ON}
+  if(((SWITCH_IO & 0x10) || STATS_HAZARDS) && (clock.blink)){BLINKER_R_ON}
   else{BLINKER_R_OFF}
 
   if(SWITCH_IO & 0x4) {SPORTS_ON;ECO_OFF;}
@@ -611,9 +621,9 @@ void main_can_handler (void)
       }
       lcd_clear();
     }
-    else if(MsgBuf_RX1.MsgID == ESC_BASE + 1 && esc.ERROR == 0x2 && (AUTO_SWOC || menu.driver == 0))
+    else if(MsgBuf_RX1.MsgID == ESC_BASE + 1 && esc.error == 0x2 && (AUTO_SWOC || menu.driver == 0))
     {
-      if(esc.ERROR == 0x2)
+      if(esc.error == 0x2)
       {
         esc_reset();
         buzzer(50);
@@ -641,18 +651,18 @@ void main_can_handler (void)
 void main_calc (void)
 {
   // Calculate Power of components
-  esc.Watts = esc.Bus_V * esc.Bus_I;
+  esc.watts = esc.bus_v * esc.bus_i;
 
-  BMU.Watts = BMU.Battery_I * BMU.Battery_V;
+  bmu.watts = bmu.bus_i * bmu.bus_v;
 
   mppt1.Watts = (mppt1.VIn * mppt1.IIn) / 1000.0;
   mppt2.Watts = (mppt2.VIn * mppt2.IIn) / 1000.0;
 
   // Check peaks
-  if(esc.Watts > esc.MAX_Watts){esc.MAX_Watts = esc.Watts;}
-  if(esc.Bus_I > esc.MAX_Bus_I){esc.MAX_Bus_I = esc.Bus_I;}
-  if(esc.Bus_V > esc.MAX_Bus_V){esc.MAX_Bus_V = esc.Bus_V;}
-  if(esc.Velocity_KMH > stats.max_speed){stats.max_speed = esc.Velocity_KMH;}
+  if(esc.watts > esc.max_watts){esc.max_watts = esc.watts;}
+  if(esc.bus_i > esc.max_bus_i){esc.max_bus_i = esc.bus_i;}
+  if(esc.bus_v > esc.max_bus_v){esc.max_bus_v = esc.bus_v;}
+  if(esc.velocity_kmh > stats.max_speed){stats.max_speed = esc.velocity_kmh;}
 
   if(mppt1.Tmp > mppt1.MAX_Tmp){mppt1.MAX_Tmp = mppt1.Tmp;}
   if(mppt1.VIn > mppt1.MAX_VIn){mppt1.MAX_VIn = mppt1.VIn;}
@@ -664,9 +674,13 @@ void main_calc (void)
   if(mppt2.IIn > mppt2.MAX_IIn){mppt2.MAX_IIn = mppt2.IIn;}
   if(mppt2.Watts > mppt2.MAX_Watts){mppt2.MAX_Watts = mppt2.Watts;}
 
-  if(BMU.Watts > BMU.MAX_Watts){BMU.MAX_Watts = BMU.Watts;}
-  if(BMU.Battery_I > BMU.MAX_Battery_I){BMU.MAX_Battery_I = BMU.Battery_I;}
-  if(BMU.Battery_V > BMU.MAX_Battery_V){BMU.MAX_Battery_V = BMU.Battery_V;}
+  if(bmu.watts > bmu.max_watts){bmu.max_watts = bmu.watts;}
+  if(bmu.bus_i > bmu.max_bus_i){bmu.max_bus_i = bmu.bus_i;}
+  if(bmu.bus_v > bmu.max_bus_v){bmu.max_bus_v = bmu.bus_v;}
+
+  if(shunt.watts > shunt.max_watts){shunt.max_watts = shunt.watts;}
+  if(shunt.bus_i > shunt.max_bus_i){shunt.max_bus_i = shunt.bus_i;}
+  if(shunt.bus_v > shunt.max_bus_v){shunt.max_bus_v = shunt.bus_v;}
 }
 
 /******************************************************************************
@@ -680,7 +694,7 @@ void main_calc (void)
  ******************************************************************************/
 void main_HV (void)
 {
-  if(esc.Bus_V > 90 && esc.Bus_V > 0.9 * BMU.Battery_V && esc.Bus_V < 1.1 * BMU.Battery_V && stats.hv_counter<1100){stats.hv_counter++;}
+  if(esc.bus_v > 90 && esc.bus_v > (0.9 * shunt.bus_v) && esc.bus_v < (1.1 * shunt.bus_v) && stats.hv_counter<1100){stats.hv_counter++;}
   else if(stats.hv_counter){stats.hv_counter--;}
 
   if(stats.hv_counter>1000 && !STATS_ARMED){buzzer(50);SET_STATS_ARMED;HV_ON;}
@@ -919,7 +933,7 @@ void persistent_load (void)
   stats.odometer = conv_uint_float(EE_read(ADD_ODO));
   stats.odometer_tr = conv_uint_float(EE_read(ADD_ODOTR));
 
-  BMU.WattHrs = conv_uint_float(EE_read(ADD_BMUWHR));
+  bmu.watt_hrs = conv_uint_float(EE_read(ADD_BMUWHR));
   mppt1.WattHrs = conv_uint_float(EE_read(ADD_MPPT1WHR));
   mppt2.WattHrs = conv_uint_float(EE_read(ADD_MPPT2WHR));
 }
@@ -942,7 +956,7 @@ void persistent_store (void)
   }
   else
   {
-    EE_write(ADD_BMUWHR, conv_float_uint(BMU.WattHrs));
+    EE_write(ADD_BMUWHR, conv_float_uint(bmu.watt_hrs));
     EE_write(ADD_MPPT1WHR, conv_float_uint(mppt1.WattHrs));
     EE_write(ADD_MPPT2WHR, conv_float_uint(mppt2.WattHrs));
   }
@@ -981,29 +995,29 @@ void nonpersistent_load(void)
   stats.max_speed = 0;
   stats.cruise_speed = 0;
   stats.ramp_speed = 5;
+  stats.strobe_tim = 60;
 
-  BMU.Battery_I = 0;
-  BMU.Battery_V = 0;
-  BMU.CAN_ID = BMU_BASE;
-  BMU.Status = 0;
-  BMU.MAX_Battery_I = 0;
-  BMU.MAX_Battery_V = 0;
-  BMU.MAX_Watts = 0;
-  BMU.Max_Cell_Tmp = 0;
-  BMU.Max_Cell_V = 0;
-  BMU.Min_Cell_Tmp = 0;
-  BMU.Min_Cell_V = 0;
+  bmu.bus_i = 0;
+  bmu.bus_v = 0;
+  bmu.status = 0;
+  bmu.watts = 0;
+  bmu.max_bus_i = 0;
+  bmu.max_bus_v = 0;
+  bmu.max_watts = 0;
+  bmu.max_cell_tmp = 0;
+  bmu.max_cell_v = 0;
+  bmu.min_cell_tmp = 0;
+  bmu.min_cell_v = 0;
 
-  esc.Bus_I = 0;
-  esc.Bus_V = 0;
-  esc.CAN_ID = ESC_BASE;
-  esc.ERROR = 0;
-  esc.MAX_Bus_I = 0;
-  esc.MAX_Bus_V = 0;
-  esc.MAX_Watts = 0;
-  esc.Velocity_KMH = 0;
-  esc.WattHrs = 0;
-  esc.Watts = 0;
+  esc.bus_i = 0;
+  esc.bus_v = 0;
+  esc.error = 0;
+  esc.max_bus_i = 0;
+  esc.max_bus_v = 0;
+  esc.max_watts = 0;
+  esc.velocity_kmh = 0;
+  esc.watt_hrs = 0;
+  esc.watts = 0;
 
   mppt1.CAN_ID = MPPT1_BASE;
   mppt1.IIn = 0;
@@ -1050,6 +1064,13 @@ void nonpersistent_load(void)
   MsgBuf_RX2.MsgID = 0x0;
   MsgBuf_RX2.DataA = 0x0;
   MsgBuf_RX2.DataB = 0x0;
+
+  shunt.bus_i = 0;
+  shunt.bus_v = 0;
+  shunt.watt_hrs = 0;
+  shunt.watt_hrs_in = 0;
+  shunt.watt_hrs_out = 0;
+  shunt.con_tim = 0;
 }
 
 /******************************************************************************
@@ -1208,17 +1229,17 @@ int main (void)
   while(FORWARD || REVERSE){buzzer(60);delayMs(1, 1000);}
 
   while(1){ // Exiting this loop ends the program
-    if((esc.ERROR & 0x1) && !STATS_HWOC_ACK) // on unacknowledged HWOC error, show error screen
+    if((esc.error & 0x1) && !STATS_HWOC_ACK) // on unacknowledged HWOC error, show error screen
     {menu.errors[1]();}
-    else if((esc.ERROR & 0x2) && !STATS_SWOC_ACK && !AUTO_SWOC && menu.driver) // show SWOC screen when auto reset off and not on display mode and error not acknowledged
+    else if((esc.error & 0x2) && !STATS_SWOC_ACK && !AUTO_SWOC && menu.driver) // show SWOC screen when auto reset off and not on display mode and error not acknowledged
     {menu.errors[0]();}
     else if(STATS_COMMS)
     {menu.errors[2]();}
     else
     {
-      if(STATS_SWOC_ACK && !(esc.ERROR & 0x2)) // if acknowledged previous error is reset
+      if(STATS_SWOC_ACK && !(esc.error & 0x2)) // if acknowledged previous error is reset
       {CLR_STATS_SWOC_ACK;}
-      if(STATS_HWOC_ACK && !(esc.ERROR & 0x1)) // if acknowledged previous error is reset
+      if(STATS_HWOC_ACK && !(esc.error & 0x1)) // if acknowledged previous error is reset
       {CLR_STATS_HWOC_ACK;}
 
       menu.counter++;

@@ -71,183 +71,175 @@ typedef struct MPPT_STRUCT
 
 typedef struct MPPT_RELAY_STRUCT
 {
-  uint32_t DataA;
-  uint32_t DataB;
+  uint32_t data_a;
+  uint32_t data_b;
 }MPPT_RELAY;
 
 #if _MC_VECTORS
 typedef struct VECTORS_MTRCONT_STRUCT
 {
-  float V_Real;
-  float V_Imag;
-  float I_Real;
-  float I_Imag;
-  float BEMF_Real;
-  float BEMF_Imag;
+  float v_real;
+  float v_imag;
+  float i_real;
+  float i_imag;
+  float bemf_real;
+  float bemf_imag;
 }VECTORS_MTRCONT;
 #endif // _MC_VECTORS
 
 typedef struct MOTORCONTROLLER_STRUCT
 {
-  /// Predetermined Values
-  uint32_t CAN_ID;      // CAN Bus identifier
-
   /// From CAN Bus
-  uint32_t SERIAL_NO;   // Motor Controller Serial
-  float Bus_I;          // Bus Current
-  float Bus_V;          // Bus Voltage
+  float bus_i;          // Bus Current
+  float bus_v;          // Bus Voltage
 #if _MC_ERR
-  uint16_t ERROR;       // Error Flags
+  uint16_t error;       // Error Flags
 #endif // _MC_ERR
 #if _MC_LIM
-  uint16_t LIMIT;       // Limit Flags
+  uint16_t limit;       // Limit Flags
 #endif // _MC_LIM
 #if _MC_PHASE
-  float PhaseC_I;       // Motor Phase C Current
-  float PhaseB_I;       // Motor Phase B Current
+  float phase_c_i;       // Motor Phase C Current
+  float phase_b_i;       // Motor Phase B Current
 #endif // _MC_PHASE
 #if _MC_VECTORS
-  VECTORS_MTRCONT *VECTORS; // Motor Vectors
+  VECTORS_MTRCONT *vectors; // Motor Vectors
 #endif // _MC_VECTORS
 #if _MC_RAILS
-  float Rail_15V;       // 15V Rail Actual Voltage
-  float Rail_3300mV;    // 3.3V Rail Actual Voltage
-  float Rail_1900mV;    // 1.9V Rail Actual Voltage
+  float rail_15v;       // 15V Rail Actual Voltage
+  float rail_3300mv;    // 3.3V Rail Actual Voltage
+  float rail_1900mv;    // 1.9V Rail Actual Voltage
 #endif // _MC_RAILS
 #if _MC_TMP
-  float Heatsink_Tmp;   // Heatsink Temperature
-  float Motor_Tmp;      // Motor Temperature
-  float Board_Tmp;      // Board Temperature
+  float heatsink_tmp;   // Heatsink Temperature
+  float motor_tmp;      // Motor Temperature
+  float board_tmp;      // Board Temperature
 #if _MC_PEAKS // && _MC_TMP
-  float MAX_Heathsink_Tmp;
-  float MAX_Motor_Tmp;
-  float MAX_Board_Tmp;
+  float max_heathsink_tmp;
+  float max_motor_tmp;
+  float max_board_tmp;
 #endif // _MC_PEAKS
 #endif // _MC_TMP
 #if _MC_AMPHRS
-  float DC_AmpHrs;      // DC Bus AmpHrs
+  float dc_amp_hrs;      // DC Bus AmpHrs
 #endif // _MC_AMPHRS
 #if _MC_ODO
-  float Odometer;       // Distance traveled since reset (m)
+  float odometer;       // Distance traveled since reset (m)
 #endif // _MC_ODO
 #if _MC_SLIP
-  float Slip_Speed;     // Motor Slip Speed (Hz)
+  float slip_speed;     // Motor Slip Speed (Hz)
 #endif // _MC_SLIP
 #if _MC_VELOCITY == 1
-  float Velocity_KMH;
+  float velocity_kmh;
 #elif _MC_VELOCITY == 2
-  float Velocity_RPM;
+  float velocity_rpm;
 #elif _MC_VELOCITY == 3
-  float Velocity_KMH;
-  float Velocity_RPM;
+  float velocity_kmh;
+  float velocity_rpm;
 #endif // _MC_VELOCITY
 
   /// Calculated Values & Peaks
 #if _MC_POWER
-  float Watts;          // Bus_I * Bus_V
-  float WattHrs;        // Calculated every 10mS
+  float watts;          // Bus_I * Bus_V
+  float watt_hrs;        // Calculated every 10mS
 #if _MC_PEAKS // && _MC_POWER
-  float MAX_Watts;
+  float max_watts;
 #endif // _MC_PEAKS
 #endif // _MC_POWER
 #if _MC_PEAKS
-  float MAX_Bus_I;
-  float MAX_Bus_V;
+  float max_bus_i;
+  float max_bus_v;
 #endif // MC_PEAKS
 }MOTORCONTROLLER;
 
 struct BMU_STRUCT
 {
-  /// Predetermined Values
-  uint32_t CAN_ID;      // CAN Bus Identifier
-
   /// From CAN Bus
-  uint32_t SERIAL_NO;   // BMU Serial Number
-  uint32_t Battery_V;   // Battery Voltage
-  int32_t Battery_I;    // Battery Output Current
-  uint32_t Status;      // Status Flags
+  uint32_t bus_v;   // Battery Voltage
+  int32_t bus_i;    // Battery Output Current
+  uint32_t status;      // status Flags
 #if _BMU_SOC == 1
-  float SOC;            // Battery State of Charge (0 = Full)
+  float soc;            // Battery State of Charge (0 = Full)
 #elif _BMU_SOC == 2
-  float SOC_PER;        // Battery State of Charge as % (1 = Full)
+  float soc_per;        // Battery State of Charge as % (1 = Full)
 #elif _BMU_SOC ==3
-  float SOC;
-  float SOC_PER;
+  float soc;
+  float soc_per;
 #endif // _BMU_SOC
 #if _BMU_BAL_SOC == 1
-  float BAL_SOC;        // Balance State of Charge. Ah supplied to pack since first cell began balancing
+  float bal_soc;        // Balance State of Charge. Ah supplied to pack since first cell began balancing
 #elif _BMU_BAL_SOC == 2
-  float BAL_SOC_PER;    // Balance State of Charge as %
+  float bal_soc_per;    // Balance State of Charge as %
 #elif _BMU_BAL_SOC == 3
-  float BAL_SOC;
-  float BAL_SOC_PER;
+  float bal_soc;
+  float bal_soc_per;
 #endif // _BMU_BAL_SOC
 #if _BMU_THRES
-  int16_t Charge_Cell_V_Err;    //
-  int16_t Cell_Tmp_Margin;      //
-  int16_t Discharge_Cell_V_Err; //
+  int16_t charge_cell_v_err;    //
+  int16_t cell_tmp_margin;      //
+  int16_t discharge_cell_v_err; //
 #endif // _BMU_THRES
 #if _BMU_CAP
-  uint16_t Pack_Capacity;
+  uint16_t pack_capacity;
 #endif // _BMU_CAP
 #if _BMU_PRECHARGE
-  char Driver_Status;
-  char Precharge_State;
-  FLAG(Precharge_Time_Elapsed)
-  uint8_t Precharge_Timer;
+  char driver_status;
+  char precharge_state;
+  uint8_t precharge_time_elapsed;
+  uint8_t precharge_timer;
 #endif // _BMU_PRECHARGE
 #if _BMU_CELL_V
-  uint16_t Min_Cell_V;    // Minimum Cell Voltage
-  uint16_t Max_Cell_V;    // Maximum Cell Voltage
-  uint8_t CMU_Min_V;      // CMU number with minimum cell voltage
-  uint8_t CMU_Max_V;      // CMU number with maximum cell voltage
-  uint8_t Cell_Min_V;     // Cell number with minimum cell voltage
-  uint8_t Cell_Max_V;     // Cell number with maximum cell voltage
+  uint16_t min_cell_v;    // Minimum Cell Voltage
+  uint16_t max_cell_v;    // Maximum Cell Voltage
+  uint8_t cmu_min_v;      // CMU number with minimum cell voltage
+  uint8_t cmu_max_v;      // CMU number with maximum cell voltage
+  uint8_t cell_min_v;     // Cell number with minimum cell voltage
+  uint8_t cell_max_v;     // Cell number with maximum cell voltage
 #endif // _BMU_CELL_V
 #if _BMU_CMU_TMP
-  uint16_t Min_Cell_Tmp;  // Minimum Cell Temperature
-  uint16_t Max_Cell_Tmp;  // Maximum Cell Temperature
-  uint8_t CMU_Min_Tmp;    // CMU number with minimum cell temperature
-  uint8_t CMU_Max_Tmp;    // CMU number with maximum cell temperature
+  uint16_t min_cell_tmp;  // Minimum Cell Temperature
+  uint16_t max_cell_tmp;  // Maximum Cell Temperature
+  uint8_t cmu_min_tmp;    // CMU number with minimum cell temperature
+  uint8_t cmu_max_tmp;    // CMU number with maximum cell temperature
 #endif // _BMU_CMU_TMP
 #if _BMU_BAL_THRES
-  uint16_t Bal_Thres_Rising;
-  uint16_t Bal_Thres_Falling;
+  uint16_t bal_thres_rising;
+  uint16_t bal_thres_falling;
 #endif // _BMU_BAL_THRES
 #if _BMU_CMU_CNT
-  uint8_t CMU_Count;
+  uint8_t cmu_count;
 #endif // _BMU_CMU_CNT
 #if _BMU_VER
-  uint16_t BMU_FW_Ver;
-  uint8_t BMU_HW_Ver;
-  uint8_t BMU_Model_ID;
+  uint16_t bmu_fw_ver;
+  uint8_t bmu_hw_ver;
+  uint8_t bmu_model_id;
 #endif // _BMU_VER
 #if _BMU_FAN == 1
-  uint16_t Fan0_Spd;
+  uint16_t fan0_spd;
 #elif _BMU_FAN == 2
-  uint16_t Fan1_Spd;
+  uint16_t fan1_spd;
 #elif _BMU_FAN == 3
-  uint16_t Fan0_Spd;
-  uint16_t Fan1_Spd;
+  uint16_t fan0_spd;
+  uint16_t fan1_spd;
 #endif // _BMU_FAN
 #if _BMU_12V_CONSUM
-  uint16_t Fan_Contactor_12V_mA;
-  uint16_t CMU_12V_mA;
+  uint16_t fan_contactor_12v_ma;
+  uint16_t cmu_12v_ma;
 #endif // _BMU_12V_CONSUM
 
   /// Calculated & Peaks
 #if _BMU_POWER
-  uint32_t Watts;
-  float WattHrs;
+  uint32_t watts;
+  float watt_hrs;
 #if _BMU_PEAKS // && _BMU_POWER
-  uint32_t MAX_Watts;
+  uint32_t max_watts;
 #endif // _BMU_PEAKS
 #endif // _BMU_POWER
 #if _BMU_PEAKS
-  uint32_t MAX_Battery_V;
-  int32_t MAX_Battery_I;
+  uint32_t max_bus_v;
+  int32_t max_bus_i;
 #endif // _BMU_PEKAS
-}BMU;
+}bmu;
 
 struct STATS_STRUCT
 {
@@ -258,20 +250,21 @@ struct STATS_STRUCT
   float cruise_speed;       // kmh
   uint16_t hv_counter;      //
   uint8_t buz_tim;          // 10mS ticks to sound buzzer
+  uint8_t strobe_tim;
   uint8_t paddle_mode;
   uint8_t flags;
   uint8_t errors;
 }stats;
 
-/// STATS.flags
+/// stats.flags
 #define STATS_DRV_MODE       ((stats.flags & 0x01) >> 0)
 #define STATS_BUZZER         ((stats.flags & 0x02) >> 1)
 #define STATS_MPPT_POLL      ((stats.flags & 0x04) >> 2)
 #define STATS_ARMED          ((stats.flags & 0x08) >> 3)
 #define STATS_CR_ACT         ((stats.flags & 0x10) >> 4)
 #define STATS_CR_STS         ((stats.flags & 0x20) >> 5)
-#define STATS_FUNUSED_1      ((stats.flags & 0x40) >> 6)
-#define STATS_FUNUSED_2      ((stats.flags & 0x80) >> 7)
+#define STATS_HAZARDS        ((stats.flags & 0x40) >> 6)
+#define STATS_STROBE         ((stats.flags & 0x80) >> 7)
 
 #define SET_STATS_DRV_MODE   stats.flags |= 0x01;	// Sports Flagged
 #define SET_STATS_BUZZER     stats.flags |= 0x02;
@@ -279,8 +272,8 @@ struct STATS_STRUCT
 #define SET_STATS_ARMED      stats.flags |= 0x08;
 #define SET_STATS_CR_ACT     stats.flags |= 0x10;
 #define SET_STATS_CR_STS     stats.flags |= 0x20;
-#define SET_STATS_FUNUSED_1  stats.flags |= 0x40;
-#define SET_STATS_FUNUSED_2  stats.flags |= 0x80;
+#define SET_STATS_HAZARDS    stats.flags |= 0x40;
+#define SET_STATS_STROBE     stats.flags |= 0x80;
 
 #define CLR_STATS_DRV_MODE   stats.flags &= 0xFE;	// Economy Flagged
 #define CLR_STATS_BUZZER     stats.flags &= 0xFD;
@@ -288,10 +281,19 @@ struct STATS_STRUCT
 #define CLR_STATS_ARMED      stats.flags &= 0xF7;
 #define CLR_STATS_CR_ACT     stats.flags &= 0xEF;
 #define CLR_STATS_CR_STS     stats.flags &= 0xDF;
-#define CLR_STATS_FUNUSED_1  stats.flags &= 0xBF;
-#define CLR_STATS_FUNUSED_2  stats.flags &= 0x7F;
+#define CLR_STATS_HAZARDS    stats.flags &= 0xBF;
+#define CLR_STATS_STROBE     stats.flags &= 0x7F;
 
-/// STATS.errors
+#define TOG_STATS_DRV_MODE   stats.flags ^= 0x01;
+#define TOG_STATS_BUZZER     stats.flags ^= 0x02;
+#define TOG_STATS_MPPT_POLL  stats.flags ^= 0x04;
+#define TOG_STATS_ARMED      stats.flags ^= 0x08;
+#define TOG_STATS_CR_ACT     stats.flags ^= 0x10;
+#define TOG_STATS_CR_STS     stats.flags ^= 0x20;
+#define TOG_STATS_HAZARDS    stats.flags ^= 0x40;
+#define TOG_STATS_STROBE     stats.flags ^= 0x80;
+
+/// stats.errors
 #define STATS_SWOC_ACK       ((stats.errors & 0x01) >> 0)
 #define STATS_HWOC_ACK       ((stats.errors & 0x02) >> 1)
 #define STATS_COMMS          ((stats.errors & 0x04) >> 2)
@@ -314,6 +316,13 @@ struct STATS_STRUCT
 #define CLR_STATS_EUNUSED_2  stats.errors &= 0xBF;
 #define CLR_STATS_EUNUSED_3  stats.errors &= 0x7F;
 
+#define TOG_STATS_SWOC_ACK   stats.errors ^= 0xFE;
+#define TOG_STATS_HWOC_ACK   stats.errors ^= 0xFD;
+#define TOG_STATS_COMMS      stats.errors ^= 0xFB;
+#define TOG_STATS_EUNUSED_1  stats.errors ^= 0xDF;
+#define TOG_STATS_EUNUSED_2  stats.errors ^= 0xBF;
+#define TOG_STATS_EUNUSED_3  stats.errors ^= 0x7F;
+
 
 struct DRIVE_STRUCT
 {
@@ -334,11 +343,16 @@ struct CLOCK_STRUCT
 
 struct SHUNT_STRUCT
 {
-	float BusV;
-	float BusI;
-	float WattHrsIn;
-	float WattHrsOut;
-	float WattHrs;
+	float bus_v;
+	float bus_i;
+	float watt_hrs_in;
+	float watt_hrs_out;
+	float watt_hrs;
+	float watts;
+	float max_bus_v;
+	float max_bus_i;
+	float max_watts;
+	uint8_t con_tim;
 }shunt;
 
 #endif /* STRUCT_H_ */

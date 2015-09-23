@@ -10,7 +10,7 @@
 
 #include "LPC17xx.h"
 
-struct INPUT // in structure for easy logical expansion to other events (on press, timed hold)
+struct INPUT_STRUCT // in structure for easy logical expansion to other events (on press, timed hold)
 {
   uint8_t input_dwn;
 }inputs;

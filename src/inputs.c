@@ -310,6 +310,15 @@ uint8_t btn_release_left_right(void)
  ******************************************************************************/
 uint8_t swt_cruise(void)
 {
-  // TODO: Implement
+  if(CC_ON || INPUTS_CRU_UP)
+  {
+    if(!CC_ON && INPUTS_CRU_UP){CLR_INPUTS_CRU_UP;return 4;}
+    else{SET_INPUTS_CRU_UP;return 1;}
+  }
+  else if(CC_OFF || INPUTS_CRU_DWN)
+  {
+    if(!CC_OFF && INPUTS_CRU_DWN){CLR_INPUTS_CRU_DWN;return 8;}
+    else{SET_INPUTS_CRU_DWN;return 2;}
+  }
   return 0;
 }

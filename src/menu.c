@@ -123,13 +123,13 @@ void menu_driver (void)
  ******************************************************************************/
 void menu_intro (void)
 {
-  lcd_putstring(0,0, "**  UWS WSC 2015  **");
+  lcd_putstring(0,0, "**  WSU WSC 2015  **");
   lcd_putstring(1,0, EROW);
-  lcd_putstring(2,0, "  UNLIMITED Driver  ");
-  lcd_putstring(3,0, "   Interface v2.0   ");
+  lcd_putstring(2,0, "  UNLIMITED. Driver ");
+  lcd_putstring(3,0, "   Interface v2.1   ");
   delayMs(1,3500);
 
-  lcd_putstring(0,0, "**  UWS WSC 2015  **");
+  lcd_putstring(0,0, "**  WSU WSC 2015  **");
   lcd_putstring(1,0, EROW);
   lcd_putstring(2,0, "    BUZZER Test..   ");
   lcd_putstring(3,0, EROW);
@@ -156,9 +156,9 @@ void menu_intro (void)
 void menu_info (void)
 {
   _lcd_putTitle("-INFO-");
-  lcd_putstring(1,0, "UNLIMITED Dash2.0   ");
-  lcd_putstring(2,0, "HW Version: 2.0     ");
-  lcd_putstring(3,0, "SW Version: 2.0.2   ");
+  lcd_putstring(1,0, "UNLIMITED. Dash 2.1 ");
+  lcd_putstring(2,0, "HW Version: 2.1     ");
+  lcd_putstring(3,0, "SW Version: 2.1.0   ");
 }
 
 /******************************************************************************
@@ -177,15 +177,17 @@ void menu_escBus (void) // likely to remove
 
   _lcd_putTitle("-ESC BUS-");
 
-  len = sprintf(buffer, "BUS VOLTAGE: %03.0f V", esc.Bus_V);
+  len = sprintf(buffer, "BUS VOLTAGE: %05.1fV", esc.bus_v);
   lcd_putstring(1,0, buffer);
   if(len<20){_lcd_padding(1, len, 20 - len);}
 
-  len = sprintf(buffer, "BAT VOLTAGE: %03lu V", BMU.Battery_I);
+  len = sprintf(buffer, "BAT VOLTAGE: %05.1fV", shunt.bus_i);
   lcd_putstring(2,0, buffer);
   if(len<20){_lcd_padding(2, len, 20 - len);}
 
-  lcd_putstring(3,0, EROW);
+  len = sprintf(buffer, "V Counter: %4d", stats.hv_counter);
+  lcd_putstring(3,0, buffer);
+  if(len<20){_lcd_padding(3, len, 20 - len);}
 }
 
 /******************************************************************************
@@ -205,33 +207,29 @@ void menu_home (void)
 
   sprintf(buffer, "MPPT: %3luW Drv: ", mppt1.Watts + mppt2.Watts);
   if(STATS_DRV_MODE == SPORTS){sprintf(buffer + 16, "S");}
-  else{sprintf(buffer + 16, "E");}
-
+  else                        {sprintf(buffer + 16, "E");}
   if(STATS_CR_ACT){sprintf(buffer + 17, "C  ");}
   else if(FORWARD){sprintf(buffer + 17, "D  ");}
   else if(REVERSE){sprintf(buffer + 17, "R  ");}
-  else{sprintf(buffer + 17, "N  ");}
-
+  else            {sprintf(buffer + 17, "N  ");}
   if(rgn_pos){sprintf(buffer + 18, "B");}
-
   lcd_putstring(1,0, buffer);
 
-  sprintf(buffer, "Bat:  %3luW Thr:", BMU.Watts);
-  if(STATS_CR_ACT){sprintf(buffer + 15, "%3.0f%% ", esc.Bus_I * (100 / MAX_ESC_CUR));}
+  sprintf(buffer, "Bat:  %3luW Thr:", bmu.watts);
+  if(STATS_CR_ACT){sprintf(buffer + 15, "%3.0f%% ", esc.bus_i * (100 / MAX_ESC_CUR));}
   else if(rgn_pos){sprintf(buffer + 11, "Brk:%3d%% ", rgn_pos/10);}
   else if(FORWARD){sprintf(buffer + 15, "%3d%% ", thr_pos/10);}
   else if(REVERSE){sprintf(buffer + 15, "%3d%% ", thr_pos/10);}
   else{sprintf(buffer + 15, "---%% ");}
-
   lcd_putstring(2,0, buffer);
 
-  sprintf(buffer, "Motor:%3.0fW Err:", esc.Watts);
-
-  if(esc.ERROR)                                       {sprintf(buffer + 15, "ESC  ");}
+  sprintf(buffer, "Motor:%3.0fW Err:", esc.watts);
+  if(esc.error)                                       {sprintf(buffer + 15, "ESC  ");}
   else if(mppt1.flags & 0x28)                         {sprintf(buffer + 15, "MPPT1");}
   else if(mppt2.flags & 0x28)                         {sprintf(buffer + 15, "MPPT2");}
-  else if(BMU.Status & 0x00001FBF)                    {sprintf(buffer + 15, "BMU  ");}
+  else if(bmu.status & 0x00001FBF)                    {sprintf(buffer + 15, "BMU  ");}
   else if(!(mppt1.flags & 0x03 && mppt2.flags & 0x03)){sprintf(buffer + 15, "NoARR");}
+  else if(!(shunt.con_tim))                           {sprintf(buffer + 15, "NoSHT");}
   else                                                {sprintf(buffer + 15, " --- ");}
   lcd_putstring(3,0, buffer);
 }
@@ -293,9 +291,9 @@ void menu_cruise (void)
     if(STATS_CR_STS && STATS_CR_ACT)
     {
       lcd_putstring(1,0, " STS:  ON  ACT:  ON ");
-      sprintf(buffer, " SET: %3.0f  SPD: %3.0f ", stats.cruise_speed, esc.Velocity_KMH);
+      sprintf(buffer, " SET: %3.0f  SPD: %3.0f ", stats.cruise_speed, esc.velocity_kmh);
       lcd_putstring(2,0, buffer);
-      sprintf(buffer, " THR: %3.0f%% ABS: %3.0fA", esc.Bus_I * (100 / MAX_ESC_CUR), esc.Bus_I);
+      sprintf(buffer, " THR: %3.0f%% ABS: %3.0fA", esc.bus_i * (100 / MAX_ESC_CUR), esc.bus_i);
       lcd_putstring(3,0, buffer);
 
       // Button presses
@@ -306,14 +304,14 @@ void menu_cruise (void)
     else if(STATS_CR_STS && !STATS_CR_ACT)
     {
       lcd_putstring(1,0, " STS:  ON  ACT: OFF ");
-      sprintf(buffer, " SET: %3.0f  SPD: %3.0f ", stats.cruise_speed, esc.Velocity_KMH);
+      sprintf(buffer, " SET: %3.0f  SPD: %3.0f ", stats.cruise_speed, esc.velocity_kmh);
       lcd_putstring(2,0, buffer);
       lcd_putstring(3,0, EROW);
 
       // Button presses
       if(btn_release_select()){CLR_STATS_CR_STS;stats.cruise_speed = 0;}
       if((stats.cruise_speed > 1) && btn_release_increment()){SET_STATS_CR_ACT;}
-      if(btn_release_decrement()){stats.cruise_speed = esc.Velocity_KMH;SET_STATS_CR_ACT;}
+      if(btn_release_decrement()){stats.cruise_speed = esc.velocity_kmh;SET_STATS_CR_ACT;}
 
     }
     else if(STATS_CR_ACT && !STATS_CR_STS) // Should never trip, but just in case
@@ -329,7 +327,7 @@ void menu_cruise (void)
     else
     {
       lcd_putstring(1,0, " STS: OFF  ACT: OFF ");
-      sprintf(buffer, " SET:      SPD: %3.0f ", esc.Velocity_KMH);
+      sprintf(buffer, " SET:      SPD: %3.0f ", esc.velocity_kmh);
       lcd_putstring(2,0, buffer);
       lcd_putstring(3,0, EROW);
 
@@ -507,18 +505,18 @@ void menu_motor (void)
     case 0:
       _lcd_putTitle("-MTR PWR-");
 
-      len = sprintf(buffer, "%5.1fV @ %5.1fA", esc.Bus_V, esc.Bus_I);
+      len = sprintf(buffer, "%5.1fV @ %5.1fA", esc.bus_v, esc.bus_i);
       lcd_putstring(1,0, buffer);
       if(len<20){_lcd_padding(1, len, 20 - len);}
 
-      len = sprintf(buffer, "TOTAL: %.2fW",  esc.Watts);
+      len = sprintf(buffer, "TOTAL: %.2fW",  esc.watts);
       lcd_putstring(2,0, buffer);
       if(len<20){_lcd_padding(2, len, 20 - len);}
       break;
     case 1:
       _lcd_putTitle("-PWR USED-");
 
-      len = sprintf(buffer, "ESC: %.2f W/hrs", esc.WattHrs);
+      len = sprintf(buffer, "ESC: %.2f W/hrs", esc.watt_hrs);
       lcd_putstring(1,0, buffer);
       if(len<20){_lcd_padding(1, len, 20 - len);}
 
@@ -527,24 +525,24 @@ void menu_motor (void)
     case 2:
       _lcd_putTitle("-MTR PKS-");
 
-      len = sprintf(buffer, "%5.1fV @ %5.1fA", esc.MAX_Bus_V, esc.MAX_Bus_I);
+      len = sprintf(buffer, "%5.1fV @ %5.1fA", esc.max_bus_v, esc.max_bus_i);
       lcd_putstring(1,0, buffer);
       if(len<20){_lcd_padding(1, len, 20 - len);}
 
-      len = sprintf(buffer, "TOTAL: %.2fW",  esc.MAX_Watts);
+      len = sprintf(buffer, "TOTAL: %.2fW",  esc.max_watts);
       lcd_putstring(2,0, buffer);
       if(len<20){_lcd_padding(2, len, 20 - len);}
 
       if(btn_release_select())
       {
-        esc.MAX_Bus_I = 0;
-        esc.MAX_Bus_V = 0;
-        esc.MAX_Watts = 0;
+        esc.max_bus_i = 0;
+        esc.max_bus_v = 0;
+        esc.max_watts = 0;
         buzzer(50);
       }
       break;
   }
-  len = sprintf(buffer, "ERROR: %d", esc.ERROR);
+  len = sprintf(buffer, "ERROR: %d", esc.error);
   lcd_putstring(3,0, buffer);
   if(len<20){_lcd_padding(3, len, 20 - len);}
 
@@ -570,15 +568,15 @@ void menu_debug (void)
 
   _lcd_putTitle("-DEBUG-");
 
-  len = sprintf(buffer, "%5.1fWh %5.1fWh", shunt.WattHrs, BMU.WattHrs);
+  len = sprintf(buffer, "%5.1fWh %5.1fWh", shunt.watt_hrs, bmu.watt_hrs);
   lcd_putstring(1,0, buffer);
   if(len<20){_lcd_padding(1,len, 20 - len);}
 
-  len = sprintf(buffer, "%5.1fA  %5.1fA", shunt.BusI, BMU.Battery_I);
+  len = sprintf(buffer, "%5.1fA  %3luA", shunt.bus_i, bmu.bus_i);
   lcd_putstring(2,0, buffer);
   if(len<20){_lcd_padding(1,len, 20 - len);}
 
-  len = sprintf(buffer, "%5.1fV  %5.1fV", shunt.BusV, BMU.Battery_V);
+  len = sprintf(buffer, "%5.1fV  %3luV", shunt.bus_v, bmu.bus_v);
   lcd_putstring(3,0, buffer);
   if(len<20){_lcd_padding(1,len, 20 - len);}
 /*
@@ -815,17 +813,17 @@ void menu_errors (void)
 
   _lcd_putTitle("-FAULTS-");
 
-  len = sprintf(buffer, "ESC: %d", esc.ERROR);
+  len = sprintf(buffer, "ESC: %d", esc.error);
   lcd_putstring(1,0, buffer);
   if(len>20){_lcd_padding(1,len, 20 - len);}
 
   sprintf(buffer, "MPPT: %#05x", ((mppt2.flags & 0x03 ? 1 : 0) << 9)|((mppt1.flags & 0x03 ? 1 : 0) << 8)|(mppt1.flags & 0x3C << 2)|((mppt2.flags & 0x3C) >> 2));
   lcd_putstring(2,0, buffer);
 
-  sprintf(buffer, "BMU: %lu", BMU.Status);
+  sprintf(buffer, "BMU: %lu", bmu.status);
   lcd_putstring(3,0, buffer);
 
-  if(btn_release_select() && esc.ERROR)
+  if(btn_release_select() && esc.error)
   {
     sprintf(buffer, "RESET MOTOR CONTROLS");
     lcd_putstring(1,0, buffer);
@@ -947,7 +945,7 @@ void menu_options (void)
           break;
       }
     }
-    else{menu_inc(&menu.submenu_pos, menu.submenu_items);}
+    else{menu_dec(&menu.submenu_pos, menu.submenu_items);}
   }
 
   if(btn_release_decrement())
@@ -969,7 +967,7 @@ void menu_options (void)
           break;
       }
     }
-    else{menu_dec(&menu.submenu_pos, menu.submenu_items);}
+    else{menu_inc(&menu.submenu_pos, menu.submenu_items);}
   }
 }
 
@@ -1055,15 +1053,15 @@ void menu_odometer (void)
 
   _lcd_putTitle("-ODOMETER-");
 
-  len = sprintf(buffer, "CAR: %.3f KM", stats.odometer);
+  len = sprintf(buffer, "CAR: %.3f km", stats.odometer);
   lcd_putstring(1,0, buffer);
   if(len<20){_lcd_padding(1, len, 20 - len);}
 
-  len = sprintf(buffer, "ESC: %.3f KM", esc.Odometer/1000);
+  len = sprintf(buffer, "ESC: %.3f km", esc.odometer/1000);
   lcd_putstring(2,0, buffer);
   if(len<20){_lcd_padding(2, len, 20 - len);}
 
-  len = sprintf(buffer, "TRP: %.3f KM", stats.odometer_tr);
+  len = sprintf(buffer, "TRP: %.3f km", stats.odometer_tr);
   lcd_putstring(3,0, buffer);
   if(len<20){_lcd_padding(3, len, 20 - len);}
 
@@ -1226,7 +1224,7 @@ void _lcd_putTitle (char *_title)
 
   for (;bufadd != buffer + 10; bufadd++){*bufadd = ' ';}
 
-  sprintf(spd, " %5.1fkmh ", esc.Velocity_KMH);
+  sprintf(spd, " %5.1fkmh ", esc.velocity_kmh);
 
   for (;bufadd != buffer + 20; bufadd++)
   {
