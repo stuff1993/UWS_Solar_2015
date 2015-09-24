@@ -44,28 +44,25 @@
 
 typedef struct MPPT_STRUCT
 {
-  /// Predetermined Values
-  uint32_t CAN_ID;      // CAN Bus identifier
-
   /// From CAN Bus
-  uint32_t VIn;         // Input Voltage
-  uint32_t VOut;        // Output Voltage
-  uint32_t IIn;         // Input Current
-  uint32_t Tmp;         // Temperature in degrees
+  uint32_t v_in;        // Input Voltage
+  uint32_t v_out;       // Output Voltage
+  uint32_t i_in;        // Input Current
+  uint32_t tmp;         // Temperature in degrees
   uint8_t flags;
 
 #if _MPPT_POWER
-  uint32_t Watts;       // Watts into MPPT
-  float WattHrs;        // Watt Hours
+  uint32_t watts;       // Watts into MPPT
+  float watt_hrs;       // Watt Hours
 #if _MPPT_PEAKS
-  uint32_t MAX_Watts;   // Peak Watts into MPPT
+  uint32_t max_watts;   // Peak watts into MPPT
 #endif // _MPPT_PEAKS
 #endif // _MPPT_POWER
 #if _MPPT_PEAKS
-  uint32_t MAX_VIn;     // Peak Input Voltage
-  uint32_t MAX_VOut;    // Peak Output Voltage
-  uint32_t MAX_IIn;     // Peak Input Current
-  uint32_t MAX_Tmp;     // Peak Temperature in degrees
+  uint32_t max_v_in;     // Peak Input Voltage
+  uint32_t max_v_out;    // Peak Output Voltage
+  uint32_t max_i_in;     // Peak Input Current
+  uint32_t max_tmp;     // Peak Temperature in degrees
 #endif // _MPPT_PEAKS
 }MPPT;
 
