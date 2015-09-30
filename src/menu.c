@@ -158,7 +158,7 @@ void menu_info (void)
   _lcd_putTitle("-INFO-");
   lcd_putstring(1,0, "UNLIMITED. Dash 2.1 ");
   lcd_putstring(2,0, "HW Version: 2.1     ");
-  lcd_putstring(3,0, "SW Version: 2.1.0   ");
+  lcd_putstring(3,0, "SW Version: 2.1.1   ");
 }
 
 /******************************************************************************
@@ -170,18 +170,18 @@ void menu_info (void)
  ** Returned value: None
  **
  ******************************************************************************/
-void menu_escBus (void) // likely to remove
+void menu_escBus (void)
 {
   char buffer[20];
   int len;
 
   _lcd_putTitle("-ESC BUS-");
 
-  len = sprintf(buffer, "BUS VOLTAGE: %05.1fV", esc.bus_v);
+  len = sprintf(buffer, "Bus Voltage: %05.1fV", esc.bus_v);
   lcd_putstring(1,0, buffer);
   if(len<20){_lcd_padding(1, len, 20 - len);}
 
-  len = sprintf(buffer, "BAT VOLTAGE: %05.1fV", shunt.bus_i);
+  len = sprintf(buffer, "Bat Voltage: %05.1fV", shunt.bus_i);
   lcd_putstring(2,0, buffer);
   if(len<20){_lcd_padding(2, len, 20 - len);}
 
@@ -215,7 +215,7 @@ void menu_home (void)
   if(rgn_pos){sprintf(buffer + 18, "B");}
   lcd_putstring(1,0, buffer);
 
-  sprintf(buffer, "Bat:  %3luW Thr:", bmu.watts);
+  sprintf(buffer, "Bat:  %3.0fW Thr:", shunt.watts);
   if(STATS_CR_ACT){sprintf(buffer + 15, "%3.0f%% ", esc.bus_i * (100 / MAX_ESC_CUR));}
   else if(rgn_pos){sprintf(buffer + 11, "Brk:%3d%% ", rgn_pos/10);}
   else if(FORWARD){sprintf(buffer + 15, "%3d%% ", thr_pos/10);}
@@ -293,7 +293,7 @@ void menu_cruise (void)
       lcd_putstring(1,0, " STS:  ON  ACT:  ON ");
       sprintf(buffer, " SET: %3.0f  SPD: %3.0f ", stats.cruise_speed, esc.velocity_kmh);
       lcd_putstring(2,0, buffer);
-      sprintf(buffer, " THR: %3.0f%% ABS: %3.0fA", esc.bus_i * (100 / MAX_ESC_CUR), esc.bus_i);
+      sprintf(buffer, " THR: %3.0f%% Pow: %5.1fA", esc.bus_i * (100 / MAX_ESC_CUR), esc.watts);
       lcd_putstring(3,0, buffer);
 
       // Button presses
@@ -509,14 +509,14 @@ void menu_motor (void)
       lcd_putstring(1,0, buffer);
       if(len<20){_lcd_padding(1, len, 20 - len);}
 
-      len = sprintf(buffer, "TOTAL: %.2fW",  esc.watts);
+      len = sprintf(buffer, "Power: %.2fW",  esc.watts);
       lcd_putstring(2,0, buffer);
       if(len<20){_lcd_padding(2, len, 20 - len);}
       break;
     case 1:
       _lcd_putTitle("-PWR USED-");
 
-      len = sprintf(buffer, "ESC: %.2f W/hrs", esc.watt_hrs);
+      len = sprintf(buffer, "%.2f W/hrs", esc.watt_hrs);
       lcd_putstring(1,0, buffer);
       if(len<20){_lcd_padding(1, len, 20 - len);}
 
@@ -529,7 +529,7 @@ void menu_motor (void)
       lcd_putstring(1,0, buffer);
       if(len<20){_lcd_padding(1, len, 20 - len);}
 
-      len = sprintf(buffer, "TOTAL: %.2fW",  esc.max_watts);
+      len = sprintf(buffer, "Power: %.2fW",  esc.max_watts);
       lcd_putstring(2,0, buffer);
       if(len<20){_lcd_padding(2, len, 20 - len);}
 
@@ -593,11 +593,11 @@ void menu_battery (void)
       lcd_putstring(1,0, buffer);
       if(len<20){_lcd_padding(1, len, 20 - len);}
 
-      len = sprintf(buffer, "In: %.2f W/hrs", shunt.watt_hrs_in);
-      lcd_putstring(1,0, buffer);
-      if(len<20){_lcd_padding(1, len, 20 - len);}
+      len = sprintf(buffer, "In:    %.2f W/hrs", shunt.watt_hrs_in);
+      lcd_putstring(2,0, buffer);
+      if(len<20){_lcd_padding(2, len, 20 - len);}
 
-      len = sprintf(buffer, "Out: %.2f", shunt.watt_hrs_out);
+      len = sprintf(buffer, "Out:   %.2f W/hrs", shunt.watt_hrs_out);
       lcd_putstring(3,0, buffer);
       if(len<20){_lcd_padding(3, len, 20 - len);}
       break;
@@ -612,8 +612,8 @@ void menu_battery (void)
       lcd_putstring(2,0, buffer);
       if(len<20){_lcd_padding(2, len, 20 - len);}
 
-      len = sprintf(buffer, "Power: %.2fW", shunt.max_watts);
-      lcd_putstring(1,0, buffer);
+      len = sprintf(buffer, "Power:   %.2fW", shunt.max_watts);
+      lcd_putstring(3,0, buffer);
       if(len<20){_lcd_padding(3, len, 20 - len);}
 
       if(btn_release_select())
@@ -633,6 +633,59 @@ void menu_battery (void)
 }
 
 /******************************************************************************
+ ** Function name:  menu_temperature
+ **
+ ** Description:    Temperatures screen
+ **
+ ** Parameters:     None
+ ** Returned value: None
+ **
+ ******************************************************************************/
+void menu_temperature (void)
+{
+	  char buffer[20];
+	  int len;
+	  menu.submenu_items = 2;
+
+	  _lcd_putTitle("-TEMPS-");
+
+	  switch(menu.submenu_pos)
+	  {
+	    default:
+	      menu.submenu_pos = 0;
+	    case 0:
+	      len = sprintf(buffer, "Motor: %5.1f%sC", esc.motor_tmp);
+	      lcd_putstring(1,0, buffer);
+	      if(len<20){_lcd_padding(1, len, 20 - len);}
+
+	      len = sprintf(buffer, "Mtr Con: %5.1f%sC",  esc.board_tmp);
+	      lcd_putstring(2,0, buffer);
+	      if(len<20){_lcd_padding(2, len, 20 - len);}
+
+	      len = sprintf(buffer, "Battery: %d", bmu.max_cell_tmp);
+	      lcd_putstring(3,0, buffer);
+	      if(len<20){_lcd_padding(3, len, 20 - len);}
+	      break;
+	    case 1:
+	      len = sprintf(buffer, "MPPT1: %d%sC", mppt1.tmp);
+	      lcd_putstring(1,0, buffer);
+	      if(len<20){_lcd_padding(1, len, 20 - len);}
+
+	      len = sprintf(buffer, "MPPT2: %d%sC", mppt2.tmp);
+	      lcd_putstring(2,0, buffer);
+	      if(len<20){_lcd_padding(2, len, 20 - len);}
+
+	      lcd_putstring(3,0, EROW);
+	      break;
+	  }
+
+	  /// BUTTONS
+	  if(btn_release_increment()){menu_inc(&menu.submenu_pos, menu.submenu_items);}
+
+	  if(btn_release_decrement()){menu_dec(&menu.submenu_pos, menu.submenu_items);}
+}
+
+/******************************************************************************
  ** Function name:  menu_debug
  **
  ** Description:    Bus debug screen
@@ -642,7 +695,7 @@ void menu_battery (void)
  **
  ******************************************************************************/
 void menu_debug (void)
-{// TODO: TEAM - Update field names
+{
   char buffer[20];
   int len;
 
@@ -654,11 +707,11 @@ void menu_debug (void)
 
   len = sprintf(buffer, "%5.1fA  %3luA", shunt.bus_i, bmu.bus_i);
   lcd_putstring(2,0, buffer);
-  if(len<20){_lcd_padding(1,len, 20 - len);}
+  if(len<20){_lcd_padding(2,len, 20 - len);}
 
   len = sprintf(buffer, "%5.1fV  %3luV", shunt.bus_v, bmu.bus_v);
   lcd_putstring(3,0, buffer);
-  if(len<20){_lcd_padding(1,len, 20 - len);}
+  if(len<20){_lcd_padding(3,len, 20 - len);}
 /*
   if(btn_release_inc_sel() == 3)
   {
@@ -693,7 +746,7 @@ void menu_config (void)
     {
       default:
       case 0:
-        lcd_putstring(1,0, SELECTOR);
+        lcd_putstring(1,0, clock.blink?SELECTOR:DESELECTOR);
         lcd_putstring(1,9, DESELECTOR);
         lcd_putstring(2,0, DESELECTOR);
         lcd_putstring(2,9, DESELECTOR);
@@ -701,12 +754,12 @@ void menu_config (void)
       case 1:
         lcd_putstring(1,0, DESELECTOR);
         lcd_putstring(1,9, DESELECTOR);
-        lcd_putstring(2,0, SELECTOR);
+        lcd_putstring(2,0, clock.blink?SELECTOR:DESELECTOR);
         lcd_putstring(2,9, DESELECTOR);
         break;
       case 2:
         lcd_putstring(1,0, DESELECTOR);
-        lcd_putstring(1,9, SELECTOR);
+        lcd_putstring(1,9, clock.blink?SELECTOR:DESELECTOR);
         lcd_putstring(2,0, DESELECTOR);
         lcd_putstring(2,9, DESELECTOR);
         break;
@@ -714,7 +767,7 @@ void menu_config (void)
         lcd_putstring(1,0, DESELECTOR);
         lcd_putstring(1,9, DESELECTOR);
         lcd_putstring(2,0, DESELECTOR);
-        lcd_putstring(2,9, SELECTOR);
+        lcd_putstring(2,9, clock.blink?SELECTOR:DESELECTOR);
         break;
     }
   }
@@ -1013,7 +1066,7 @@ void menu_options (void)
       switch(menu.submenu_pos)
       {
         case 0:
-          stats.flags ^= 0x02;
+        	TOG_STATS_BUZZER;
           break;
         case 1:
           menu.driver = (menu.driver + 1) % 4;
@@ -1035,7 +1088,7 @@ void menu_options (void)
       switch(menu.submenu_pos)
       {
         case 0:
-          stats.flags ^= 0x02;
+        	TOG_STATS_BUZZER;
           break;
         case 1:
           menu.driver = (menu.driver + 3) % 4;

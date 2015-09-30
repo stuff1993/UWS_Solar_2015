@@ -70,6 +70,8 @@ void menu_MPPT1(void);
 void menu_MPPT2(void);
 void menu_MPPTPower(void);
 void menu_motor(void);
+void menu_battery(void);
+void menu_temperature(void);
 void menu_debug(void);
 void menu_config(void);
 void menu_errors(void);

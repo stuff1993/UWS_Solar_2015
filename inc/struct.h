@@ -18,7 +18,7 @@
 #define _MC_PHASE 0
 #define _MC_VECTORS 0
 #define _MC_RAILS 0
-#define _MC_TMP 0
+#define _MC_TMP 1
 #define _MC_AMPHRS 0
 #define _MC_ODO 1
 #define _MC_SLIP 0
@@ -249,8 +249,8 @@ struct STATS_STRUCT
   uint8_t buz_tim;          // 10mS ticks to sound buzzer
   uint8_t strobe_tim;
   uint8_t paddle_mode;
-  uint8_t flags;
-  uint8_t errors;
+  volatile uint8_t flags;
+  volatile uint8_t errors;
 }stats;
 
 /// stats.flags

@@ -286,10 +286,10 @@ void mppt_data_extract (MPPT *_MPPT, MPPT_RELAY *_fkMPPT)
   _VOut = _VOut * 2.10;                       // Scaling
 
   // Update the structure after IIR filtering
-  _MPPT->tmp = iir_filter_int(((_Data_B & 0xFF0000) >> 16), _MPPT->tmp, IIR_GAIN_THERMAL);
-  _MPPT->v_in = iir_filter_int(_VIn, _MPPT->v_in, IIR_GAIN_ELECTRICAL);
-  _MPPT->i_in = iir_filter_int(_IIn, _MPPT->i_in, IIR_GAIN_ELECTRICAL);
-  _MPPT->v_out = iir_filter_int(_VOut, _MPPT->v_out, IIR_GAIN_ELECTRICAL);
+  _MPPT->tmp = iir_filter_uint(((_Data_B & 0xFF0000) >> 16), _MPPT->tmp, IIR_GAIN_THERMAL);
+  _MPPT->v_in = iir_filter_uint(_VIn, _MPPT->v_in, IIR_GAIN_ELECTRICAL);
+  _MPPT->i_in = iir_filter_uint(_IIn, _MPPT->i_in, IIR_GAIN_ELECTRICAL);
+  _MPPT->v_out = iir_filter_uint(_VOut, _MPPT->v_out, IIR_GAIN_ELECTRICAL);
   _MPPT->flags |= 0x03; // Connection timing bits
 }
 
@@ -343,6 +343,7 @@ void main_input_check (void)
     lcd_clear();
     inputs.input_dwn = 0;
     menu.submenu_pos = 0;
+    CLR_MENU_SELECTED;
   }
 
   if(SWITCH_IO & 0x4) {SET_STATS_DRV_MODE;stats.ramp_speed = SPORTS_RAMP_SPEED;}
@@ -365,8 +366,8 @@ void main_input_check (void)
  ******************************************************************************/
 int main_fault_check (void)
 {
-  if(esc.error || (bmu.status & 0xD37)){drive.current = 0;drive.speed_rpm = 0;return 2;}
-  if(mppt1.flags & 0x28 || mppt2.flags & 0x28 || (bmu.status & 0x1288) || (!shunt.con_tim)){return 1;}
+  if(esc.error){drive.current = 0;drive.speed_rpm = 0;return 2;}
+  if(mppt1.flags & 0x28 || mppt2.flags & 0x28 || (bmu.status & 0x7) || (!shunt.con_tim)){return 1;}
   return 0;
 }
 
@@ -425,8 +426,8 @@ void main_drive (void)
  ******************************************************************************/
 void main_paddles (uint32_t _pad1, uint32_t _pad2, uint16_t *_thr, uint16_t *_rgn)
 {
-  if((_pad1 > ((HGH_PAD_V + 0.1) * ADC_POINTS_PER_V)) || (_pad1 < ((LOW_PAD_V - 0.1) * ADC_POINTS_PER_V))){_pad1 = 0;}
-  if((_pad2 > ((HGH_PAD_V + 0.1) * ADC_POINTS_PER_V)) || (_pad2 < ((LOW_PAD_V - 0.1) * ADC_POINTS_PER_V))){_pad2 = 0;}
+  if((_pad1 > ((HGH_PAD_V + 0.1) * ADC_POINTS_PER_V)) || (_pad1 < ((LOW_PAD_V - 0.1) * ADC_POINTS_PER_V))){_pad1 = MID_PAD_V * ADC_POINTS_PER_V;}
+  if((_pad2 > ((HGH_PAD_V + 0.1) * ADC_POINTS_PER_V)) || (_pad2 < ((LOW_PAD_V - 0.1) * ADC_POINTS_PER_V))){_pad2 = MID_PAD_V * ADC_POINTS_PER_V;}
   switch(stats.paddle_mode)
   {
     case 0:
