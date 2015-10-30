@@ -65,8 +65,8 @@ void menu_driver (void)
   CLR_MENU_SELECTED;
 
   _lcd_putTitle("-DRIVER-");
-  lcd_putstring(1,0, "   DISPLAY    TEST  ");
-  lcd_putstring(2,0, "   RACE 1     RACE 2");
+  lcd_putstring(1,0, "   DISPLAY    RACE 1");
+  lcd_putstring(2,0, "   RACE 2     RACE 3");
 
   while(menu.driver == 255)
   {
@@ -181,7 +181,7 @@ void menu_escBus (void)
   lcd_putstring(1,0, buffer);
   if(len<20){_lcd_padding(1, len, 20 - len);}
 
-  len = sprintf(buffer, "Bat Voltage: %05.1fV", shunt.bus_i);
+  len = sprintf(buffer, "Bat Voltage: %05.1fV", shunt.bus_v);
   lcd_putstring(2,0, buffer);
   if(len<20){_lcd_padding(2, len, 20 - len);}
 
@@ -228,6 +228,7 @@ void menu_home (void)
   else if(mppt1.flags & 0x28)                         {sprintf(buffer + 15, "MPPT1");}
   else if(mppt2.flags & 0x28)                         {sprintf(buffer + 15, "MPPT2");}
   else if(bmu.status & 0x00001FBF)                    {sprintf(buffer + 15, "BMU  ");}
+  else if(STATS_NO_ARR_HV)                            {sprintf(buffer + 15, "ARRHV");}
   else if(!(mppt1.flags & 0x03 && mppt2.flags & 0x03)){sprintf(buffer + 15, "NoARR");}
   else if(!(shunt.con_tim))                           {sprintf(buffer + 15, "NoSHT");}
   else                                                {sprintf(buffer + 15, " --- ");}
@@ -293,7 +294,7 @@ void menu_cruise (void)
       lcd_putstring(1,0, " STS:  ON  ACT:  ON ");
       sprintf(buffer, " SET: %3.0f  SPD: %3.0f ", stats.cruise_speed, esc.velocity_kmh);
       lcd_putstring(2,0, buffer);
-      sprintf(buffer, " THR: %3.0f%% Pow: %5.1fA", esc.bus_i * (100 / MAX_ESC_CUR), esc.watts);
+      sprintf(buffer, " THR: %3.0f%% Pow: %3.0fA", esc.bus_i * (100 / MAX_ESC_CUR), esc.watts);
       lcd_putstring(3,0, buffer);
 
       // Button presses
@@ -373,7 +374,7 @@ void menu_MPPT1(void)
     lcd_putstring(2,0, buffer);
     if(len<20){_lcd_padding(2, len, 20 - len);}
 
-    sprintf(buffer, "%2lu%cC", mppt1.tmp, 0xB2);
+    sprintf(buffer, "%2lu%cC", mppt1.tmp, (char)0xD2);
     lcd_putstring(3,16, buffer);
 
     if(clock.blink)
@@ -423,7 +424,7 @@ void menu_MPPT2(void)
     lcd_putstring(2,0, buffer);
     if(len<20){_lcd_padding(2, len, 20 - len);}
 
-    sprintf(buffer, "%2lu%cC", mppt2.tmp, 0xD2);
+    sprintf(buffer, "%2lu%cC", mppt2.tmp, (char)0xD2);
     lcd_putstring(3,16, buffer);
 
     if(clock.blink)
@@ -505,18 +506,18 @@ void menu_motor (void)
     case 0:
       _lcd_putTitle("-MTR PWR-");
 
-      len = sprintf(buffer, "%5.1fV @ %5.1fA", esc.bus_v, esc.bus_i);
+      len = sprintf(buffer, "%5.3fV @ %5.3fA", esc.bus_v, esc.bus_i);
       lcd_putstring(1,0, buffer);
       if(len<20){_lcd_padding(1, len, 20 - len);}
 
-      len = sprintf(buffer, "Power: %.2fW",  esc.watts);
+      len = sprintf(buffer, "Power: %.3fW",  esc.watts);
       lcd_putstring(2,0, buffer);
       if(len<20){_lcd_padding(2, len, 20 - len);}
       break;
     case 1:
-      _lcd_putTitle("-PWR USED-");
+      _lcd_putTitle("-MTR WHR-");
 
-      len = sprintf(buffer, "%.2f W/hrs", esc.watt_hrs);
+      len = sprintf(buffer, "%.3f W/hrs", esc.watt_hrs);
       lcd_putstring(1,0, buffer);
       if(len<20){_lcd_padding(1, len, 20 - len);}
 
@@ -525,11 +526,11 @@ void menu_motor (void)
     case 2:
       _lcd_putTitle("-MTR PKS-");
 
-      len = sprintf(buffer, "%5.1fV @ %5.1fA", esc.max_bus_v, esc.max_bus_i);
+      len = sprintf(buffer, "%5.3fV @ %5.3fA", esc.max_bus_v, esc.max_bus_i);
       lcd_putstring(1,0, buffer);
       if(len<20){_lcd_padding(1, len, 20 - len);}
 
-      len = sprintf(buffer, "Power: %.2fW",  esc.max_watts);
+      len = sprintf(buffer, "Power: %.3fW",  esc.max_watts);
       lcd_putstring(2,0, buffer);
       if(len<20){_lcd_padding(2, len, 20 - len);}
 
@@ -542,7 +543,7 @@ void menu_motor (void)
       }
       break;
   }
-  len = sprintf(buffer, "ERROR: %d", esc.error);
+  len = sprintf(buffer, "ERROR: 0x%02x", esc.error);
   lcd_putstring(3,0, buffer);
   if(len<20){_lcd_padding(3, len, 20 - len);}
 
@@ -565,7 +566,7 @@ void menu_battery (void)
 {
   char buffer[20];
   int len;
-  menu.submenu_items = 3;
+  menu.submenu_items = 4;
 
   switch(menu.submenu_pos)
   {
@@ -574,45 +575,45 @@ void menu_battery (void)
     case 0:
       _lcd_putTitle("-BAT PWR-");
 
-      len = sprintf(buffer, "%5.1fV @ %5.1fA", shunt.bus_v, shunt.bus_i);
+      len = sprintf(buffer, "%5.3fV @ %5.3fA", shunt.bus_v, shunt.bus_i);
       lcd_putstring(1,0, buffer);
       if(len<20){_lcd_padding(1, len, 20 - len);}
 
-      len = sprintf(buffer, "Power: %.2fW",  shunt.watts);
+      len = sprintf(buffer, "Power: %.3fW",  shunt.watts);
       lcd_putstring(2,0, buffer);
       if(len<20){_lcd_padding(2, len, 20 - len);}
 
-      len = sprintf(buffer, "Status: %lu", bmu.status);
+      len = sprintf(buffer, "Status: 0x%01x", bmu.status);
       lcd_putstring(3,0, buffer);
       if(len<20){_lcd_padding(3, len, 20 - len);}
       break;
     case 1:
       _lcd_putTitle("-BAT WHR-");
 
-      len = sprintf(buffer, "Total: %.2f W/hrs", shunt.watt_hrs);
+      len = sprintf(buffer, "Total: %.3f W/hrs", shunt.watt_hrs);
       lcd_putstring(1,0, buffer);
       if(len<20){_lcd_padding(1, len, 20 - len);}
 
-      len = sprintf(buffer, "In:    %.2f W/hrs", shunt.watt_hrs_in);
+      len = sprintf(buffer, "In:    %.3f W/hrs", shunt.watt_hrs_in);
       lcd_putstring(2,0, buffer);
       if(len<20){_lcd_padding(2, len, 20 - len);}
 
-      len = sprintf(buffer, "Out:   %.2f W/hrs", shunt.watt_hrs_out);
+      len = sprintf(buffer, "Out:   %.3f W/hrs", shunt.watt_hrs_out);
       lcd_putstring(3,0, buffer);
       if(len<20){_lcd_padding(3, len, 20 - len);}
       break;
     case 2:
       _lcd_putTitle("-BAT PKS-");
 
-      len = sprintf(buffer, "Voltage: %.1fV", shunt.max_bus_v);
+      len = sprintf(buffer, "Voltage: %.3fV", shunt.max_bus_v);
       lcd_putstring(1,0, buffer);
       if(len<20){_lcd_padding(1, len, 20 - len);}
 
-      len = sprintf(buffer, "Current: %.1fA",  shunt.max_bus_i);
+      len = sprintf(buffer, "Current: %.3fA",  shunt.max_bus_i);
       lcd_putstring(2,0, buffer);
       if(len<20){_lcd_padding(2, len, 20 - len);}
 
-      len = sprintf(buffer, "Power:   %.2fW", shunt.max_watts);
+      len = sprintf(buffer, "Power:   %.3fW", shunt.max_watts);
       lcd_putstring(3,0, buffer);
       if(len<20){_lcd_padding(3, len, 20 - len);}
 
@@ -624,12 +625,65 @@ void menu_battery (void)
         buzzer(50);
       }
       break;
+    case 3:
+    	_lcd_putTitle("-BAT CELL-");
+
+    	len = sprintf(buffer, "Min Cell V: %4dV", bmu.min_cell_v);
+    	lcd_putstring(1,0, buffer);
+    	if(len<20){_lcd_padding(1, len, 20 - len);}
+
+    	len = sprintf(buffer, "Max Cell V: %4dV",  bmu.max_cell_v);
+    	lcd_putstring(2,0, buffer);
+    	if(len<20){_lcd_padding(2, len, 20 - len);}
+
+    	len = sprintf(buffer, "Max Cell T: %3d.%d%cC", bmu.max_cell_tmp/10, bmu.max_cell_tmp%10, 0xD2);
+    	lcd_putstring(3,0, buffer);
+    	if(len<20){_lcd_padding(3, len, 20 - len);}
+    	break;
   }
 
   /// BUTTONS
   if(btn_release_increment()){menu_inc(&menu.submenu_pos, menu.submenu_items);}
 
   if(btn_release_decrement()){menu_dec(&menu.submenu_pos, menu.submenu_items);}
+}
+
+/******************************************************************************
+ ** Function name:  menu_temperature
+ **
+ ** Description:    Temperatures screen
+ **
+ ** Parameters:     None
+ ** Returned value: None
+ **
+ ******************************************************************************/
+void menu_average_power (void)
+{
+	char buffer[20];
+	int len;
+
+	_lcd_putTitle("-POWER-");
+
+	len = sprintf(buffer, "ESC:   %.3fW", esc.avg_power/stats.avg_power_counter);
+	lcd_putstring(1,0, buffer);
+	if(len<20){_lcd_padding(1, len, 20 - len);}
+
+	len = sprintf(buffer, "MPPT1: %.3fW",  ((float)mppt1.avg_power)/stats.avg_power_counter);
+	lcd_putstring(2,0, buffer);
+	if(len<20){_lcd_padding(2, len, 20 - len);}
+
+	len = sprintf(buffer, "MPPT2: %.3fW", ((float)mppt2.avg_power)/stats.avg_power_counter);
+	lcd_putstring(3,0, buffer);
+	if(len<20){_lcd_padding(3, len, 20 - len);}
+
+	if(btn_release_select())
+	{
+		esc.avg_power = 0;
+		mppt1.avg_power = 0;
+		mppt2.avg_power = 0;
+		stats.avg_power_counter = 0;
+		buzzer(50);
+	}
 }
 
 /******************************************************************************
@@ -654,24 +708,24 @@ void menu_temperature (void)
 	    default:
 	      menu.submenu_pos = 0;
 	    case 0:
-	      len = sprintf(buffer, "Motor: %5.1f%sC", esc.motor_tmp);
+	      len = sprintf(buffer, "Motor:   %.1f%cC", esc.motor_tmp, (char)0xD2);
 	      lcd_putstring(1,0, buffer);
 	      if(len<20){_lcd_padding(1, len, 20 - len);}
 
-	      len = sprintf(buffer, "Mtr Con: %5.1f%sC",  esc.board_tmp);
+	      len = sprintf(buffer, "Mtr Con: %.1f%cC",  esc.board_tmp, (char)0xD2);
 	      lcd_putstring(2,0, buffer);
 	      if(len<20){_lcd_padding(2, len, 20 - len);}
 
-	      len = sprintf(buffer, "Battery: %d", bmu.max_cell_tmp);
+	      len = sprintf(buffer, "Battery: %d.%d%cC", bmu.max_cell_tmp/10, bmu.max_cell_tmp%10, (char)0xD2);
 	      lcd_putstring(3,0, buffer);
 	      if(len<20){_lcd_padding(3, len, 20 - len);}
 	      break;
 	    case 1:
-	      len = sprintf(buffer, "MPPT1: %d%sC", mppt1.tmp);
+	      len = sprintf(buffer, "MPPT1: %lu%cC", mppt1.tmp, (char)0xD2);
 	      lcd_putstring(1,0, buffer);
 	      if(len<20){_lcd_padding(1, len, 20 - len);}
 
-	      len = sprintf(buffer, "MPPT2: %d%sC", mppt2.tmp);
+	      len = sprintf(buffer, "MPPT2: %lu%cC", mppt2.tmp, (char)0xD2);
 	      lcd_putstring(2,0, buffer);
 	      if(len<20){_lcd_padding(2, len, 20 - len);}
 
@@ -950,7 +1004,7 @@ void menu_errors (void)
   lcd_putstring(1,0, buffer);
   if(len>20){_lcd_padding(1,len, 20 - len);}
 
-  sprintf(buffer, "MPPT: %#05x", ((mppt2.flags & 0x03 ? 1 : 0) << 9)|((mppt1.flags & 0x03 ? 1 : 0) << 8)|(mppt1.flags & 0x3C << 2)|((mppt2.flags & 0x3C) >> 2));
+  sprintf(buffer, "MPPT: 0x%03x", ((mppt2.flags & 0x03 ? 0 : 1) << 9)|((mppt1.flags & 0x03 ? 0 : 1) << 8)|(mppt1.flags & 0x3C << 2)|((mppt2.flags & 0x3C) >> 2));
   lcd_putstring(2,0, buffer);
 
   sprintf(buffer, "BMU: %lu", bmu.status);
@@ -1324,10 +1378,21 @@ void menu_comms (void) // errors[2]
  ******************************************************************************/
 void menu_battery_error (void) // errors[3]
 {
+  char buffer[20];
+  int len;
   _lcd_putTitle("-BAT OVT-");
   lcd_putstring(1,0, "    **WARNING!**    ");
-  lcd_putstring(2,0, "  BATTERY OVERTEMP  ");
-  lcd_putstring(3,0, "    **WARNING!**    ");
+  len = sprintf(buffer, "TMP: %d.%d%cC", bmu.max_cell_tmp/10, bmu.max_cell_tmp%10, (char)0xD2);
+  lcd_putstring(2,0, buffer);
+  if(len<20){_lcd_padding(2, len, 20 - len);}
+  len = sprintf(buffer, "MIN:%4dV MAX:%4dV ", bmu.cell_min_v, bmu.cell_max_v);
+  lcd_putstring(3,0, buffer);
+  if(len<20){_lcd_padding(3, len, 20 - len);}
+
+  if(btn_release_select())
+  {
+	  SET_STATS_BMU_ACK;
+  }
 }
 ///////////////////////////////////////////////
 
@@ -1483,46 +1548,63 @@ void menu_init (void)
       menu.menus[11] = menu_info;
       break;
     default:
-    case 1: // TEST
-      menu.menu_items = 17;
+    case 1: // RACE 1
+        menu.menu_items = 7;
+        menu.menus[0] = menu_home;
+        menu.menus[1] = menu_cruise;
+        menu.menus[2] = menu_average_power;
+        menu.menus[3] = menu_errors;
+        menu.menus[4] = menu_options;
+        menu.menus[5] = menu_runtime;
+        menu.menus[6] = menu_odometer;
+      break;
+    case 2: // RACE 2
+      menu.menu_items = 8;
       menu.menus[0] = menu_home;
-      menu.menus[1] = menu_controls;
-      menu.menus[2] = menu_cruise;
-      menu.menus[3] = menu_MPPT1;
-      menu.menus[4] = menu_MPPT2;
-      menu.menus[5] = menu_MPPTPower;
-      menu.menus[6] = menu_motor;
-      menu.menus[7] = menu_battery;
-      menu.menus[8] = menu_debug;
-      menu.menus[9] = menu_errors;
+      menu.menus[1] = menu_cruise;
+      menu.menus[2] = menu_average_power;
+      menu.menus[2] = menu_temperature;
+      menu.menus[3] = menu_errors;
+      menu.menus[4] = menu_options;
+      menu.menus[5] = menu_runtime;
+      menu.menus[6] = menu_odometer;
+      break;
+    case 3: // RACE 3
+      menu.menu_items = 11;
+      menu.menus[0] = menu_home;
+      menu.menus[1] = menu_cruise;
+      menu.menus[2] = menu_average_power;
+      menu.menus[3] = menu_temperature;
+      menu.menus[4] = menu_MPPT1;
+      menu.menus[5] = menu_MPPT2;
+      menu.menus[6] = menu_MPPTPower;
+      menu.menus[7] = menu_errors;
+      menu.menus[8] = menu_runtime;
+      menu.menus[9] = menu_odometer;
       menu.menus[10] = menu_options;
-      menu.menus[11] = menu_config;
-      menu.menus[12] = menu_peaks;
-      menu.menus[13] = menu_runtime;
-      menu.menus[14] = menu_odometer;
-      menu.menus[15] = menu_info;
-      menu.menus[16] = menu_escBus;
       break;
-    case 2: // RACE 1
-      menu.menu_items = 7;
-      menu.menus[0] = menu_home;
-      menu.menus[1] = menu_controls;
-      menu.menus[2] = menu_cruise;
-      menu.menus[3] = menu_errors;
-      menu.menus[4] = menu_options;
-      menu.menus[5] = menu_runtime;
-      menu.menus[6] = menu_odometer;
-      break;
-    case 3: // RACE 2
-      menu.menu_items = 7;
-      menu.menus[0] = menu_home;
-      menu.menus[1] = menu_controls;
-      menu.menus[2] = menu_cruise;
-      menu.menus[3] = menu_errors;
-      menu.menus[4] = menu_options;
-      menu.menus[5] = menu_runtime;
-      menu.menus[6] = menu_odometer;
-      break;
+    case 9: // TEST
+    	menu.menu_items = 19;
+    	menu.menus[0] = menu_home;
+    	menu.menus[1] = menu_controls;
+    	menu.menus[2] = menu_cruise;
+    	menu.menus[3] = menu_MPPT1;
+    	menu.menus[4] = menu_MPPT2;
+    	menu.menus[5] = menu_MPPTPower;
+    	menu.menus[6] = menu_motor;
+    	menu.menus[7] = menu_battery;
+    	menu.menus[8] = menu_average_power;
+    	menu.menus[9] = menu_temperature;
+    	menu.menus[10] = menu_debug;
+    	menu.menus[11] = menu_errors;
+    	menu.menus[12] = menu_options;
+    	menu.menus[13] = menu_config;
+    	menu.menus[14] = menu_peaks;
+    	menu.menus[15] = menu_runtime;
+    	menu.menus[16] = menu_odometer;
+    	menu.menus[17] = menu_info;
+    	menu.menus[18] = menu_escBus;
+    	break;
   }
 
   CLR_MENU_SELECTED;

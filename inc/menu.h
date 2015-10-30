@@ -8,7 +8,7 @@
 #ifndef MENU_H_
 #define MENU_H_
 
-#define	MAX_MENU_ITEMS 17
+#define	MAX_MENU_ITEMS 19
 #define ERROR_ITEMS 4
 
 #define EROW  "                    "
@@ -71,6 +71,7 @@ void menu_MPPT2(void);
 void menu_MPPTPower(void);
 void menu_motor(void);
 void menu_battery(void);
+void menu_average_power(void);
 void menu_temperature(void);
 void menu_debug(void);
 void menu_config(void);

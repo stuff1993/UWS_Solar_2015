@@ -13,8 +13,9 @@
 #include "inttofloat.h"
 
 extern CAN_MSG can_rx1_buf, can_rx2_buf;
-extern volatile uint8_t can_rx1_done, can_rx2_done;
+extern volatile uint8_t can_rx1_done;
 extern MOTORCONTROLLER esc;
+extern MPPT mppt1, mppt2;
 
 volatile uint32_t CANStatus;
 volatile uint32_t CAN1RxCount = 0, CAN2RxCount = 0;
@@ -224,25 +225,25 @@ void CAN_ISR_Rx1( void )
   break;
   case BMU_BASE + BMU_INFO + 4:
 #if _BMU_CELL_V
-  bmu.min_cell_v = (can_rx1_buf.DataB >> 16) & 0xFFFF;
-  bmu.max_cell_v = can_rx1_buf.DataB & 0xFFFF;
-  bmu.cmu_min_v = (can_rx1_buf.DataA >> 24) & 0xFF;
-  bmu.cmu_max_v = (can_rx1_buf.DataA >> 8) & 0xFF;
-  bmu.cell_min_v = (can_rx1_buf.DataA >> 16) & 0xFF;
-  bmu.cell_max_v = can_rx1_buf.DataA & 0xFF;
+  bmu.min_cell_v = can_rx1_buf.DataA & 0xFFFF;
+  bmu.max_cell_v = (can_rx1_buf.DataA >> 16) & 0xFFFF;
+  bmu.cmu_min_v = can_rx1_buf.DataB & 0xFF;
+  bmu.cmu_max_v = (can_rx1_buf.DataB >> 16) & 0xFF;
+  bmu.cell_min_v = (can_rx1_buf.DataB >> 8) & 0xFF;
+  bmu.cell_max_v = (can_rx1_buf.DataB >> 24) & 0xFF;
 #endif
   break;
   case BMU_BASE + BMU_INFO + 5:
 #if _BMU_CMU_TMP
-  bmu.max_cell_tmp = (can_rx1_buf.DataB >> 16) & 0xFFFF;
-  bmu.max_cell_tmp = can_rx1_buf.DataB & 0xFFFF;
-  bmu.cmu_min_tmp = (can_rx1_buf.DataA >> 24) & 0xFF;
-  bmu.cmu_max_tmp = (can_rx1_buf.DataA >> 8) & 0xFF;
+  bmu.max_cell_tmp = can_rx1_buf.DataA & 0xFFFF;
+  bmu.max_cell_tmp = (can_rx1_buf.DataA >> 16) & 0xFFFF;
+  bmu.cmu_min_tmp = can_rx1_buf.DataB & 0xFF;
+  bmu.cmu_max_tmp = (can_rx1_buf.DataB >> 16) & 0xFF;
 #endif
   break;
   case BMU_BASE + BMU_INFO + 6:
-  bmu.bus_v = iir_filter_int(can_rx1_buf.DataB / 1000, bmu.bus_v, IIR_GAIN_ELECTRICAL); // Packet is in mV and mA
-  bmu.bus_i = iir_filter_int(can_rx1_buf.DataA / 1000, bmu.bus_i, IIR_GAIN_ELECTRICAL);
+  bmu.bus_v = iir_filter_uint(can_rx1_buf.DataA / 1000, bmu.bus_v, IIR_GAIN_ELECTRICAL); // Packet is in mV and mA
+  bmu.bus_i = iir_filter_int(can_rx1_buf.DataB / 1000, bmu.bus_i, IIR_GAIN_ELECTRICAL);
   break;
   case BMU_BASE + BMU_INFO + 7:
   // Can extract 8 Status flags here but they are also contained with others in BASE + INFO + 9
@@ -272,7 +273,7 @@ void CAN_ISR_Rx1( void )
 #endif
   break;
   case BMU_BASE + BMU_INFO + 9:
-  bmu.status = can_rx1_buf.DataB;
+  bmu.status = can_rx1_buf.DataA & 0x7; // Only Voltage and Temperature flags relevant
 #if _BMU_VER
   bmu.bmu_hw_ver = (can_rx1_buf.DataA >> 24) & 0xFF;
   bmu.bmu_model_id = (can_rx1_buf.DataA >> 16) & 0xFF;
@@ -311,7 +312,9 @@ void CAN_ISR_Rx2( void )
   pDest++;
   *pDest = LPC_CAN2->RDB; /* Data B	*/
 
-  can_rx2_done = TRUE;
+  if(can_rx2_buf.MsgID == MPPT1_RPLY){extractMPPT1DATA();}//{mppt_data_extract(&mppt1);}
+  else if(can_rx2_buf.MsgID == MPPT2_RPLY){extractMPPT2DATA();}//{mppt_data_extract(&mppt2);}
+
   LPC_CAN2->CMR = 0x4; /* release receive buffer */
   return;
 }
@@ -414,8 +417,6 @@ uint32_t CAN1_Init( uint32_t can_btr )
 ******************************************************************************/
 uint32_t CAN2_Init( uint32_t can_btr )
 {
-  can_rx2_done = FALSE;
-
   LPC_SC->PCONP |= (1<<14);  /* Enable CAN2 clock */
 
   LPC_PINCON->PINSEL0 |= (1<<9)|(1<<11);

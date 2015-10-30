@@ -58,8 +58,8 @@
 #define BRAKELIGHT_ON   LPC_GPIO1->FIOSET |= (1<<21);
 #define BRAKELIGHT_OFF  LPC_GPIO1->FIOCLR |= (1<<21);
 
-#define REVERSE_ON      LPC_GPIO1->FIOSET |= (1<<23);
-#define REVERSE_OFF     LPC_GPIO1->FIOCLR |= (1<<23);
+#define REVERSE_ON      LPC_GPIO1->FIOSET |= (1<<26);
+#define REVERSE_OFF     LPC_GPIO1->FIOCLR |= (1<<26);
 
 #define REGEN_ON        LPC_GPIO1->FIOSET |= (1<<24);
 #define REGEN_OFF       LPC_GPIO1->FIOCLR |= (1<<24);
@@ -67,8 +67,8 @@
 #define NEUTRAL_ON      LPC_GPIO1->FIOSET |= (1<<25);
 #define NEUTRAL_OFF     LPC_GPIO1->FIOCLR |= (1<<25);
 
-#define DRIVE_ON        LPC_GPIO1->FIOSET |= (1<<26);
-#define DRIVE_OFF       LPC_GPIO1->FIOCLR |= (1<<26);
+#define DRIVE_ON        LPC_GPIO1->FIOSET |= (1<<23);
+#define DRIVE_OFF       LPC_GPIO1->FIOCLR |= (1<<23);
 
 #define ECO_ON          LPC_GPIO1->FIOSET |= (1<<30);
 #define ECO_OFF         LPC_GPIO1->FIOCLR |= (1<<30);
@@ -120,7 +120,7 @@
 /// Function Prototypes ///
 void      BOD_IRQHandler      (void);
 void      main_mppt_poll      (void);
-void      mppt_data_extract   (MPPT *_MPPT, MPPT_RELAY *_fkMPPT);
+void      mppt_data_extract   (MPPT *_MPPT);
 void      main_input_check    (void);
 int       main_fault_check    (void);
 void      main_drive          (void);
@@ -145,5 +145,7 @@ void      persistent_store    (void);
 void      GPIO_init           (void);
 void      buzzer              (uint8_t val);
 void      BOD_init            (void);
+void	  extractMPPT1DATA	  (void);
+void	  extractMPPT2DATA	  (void);
 
 #endif /* DASH_H_ */

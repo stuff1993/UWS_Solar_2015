@@ -27,7 +27,7 @@
 #define _MC_PEAKS 1
 
 /// BMU
-#define _BMU_SOC 2        // 1 = SOC, 2 = SOC%, 3 = BOTH
+#define _BMU_SOC 0        // 1 = SOC, 2 = SOC%, 3 = BOTH
 #define _BMU_BAL_SOC 0    // 1 = Balance AmpHrs, 2 = Balance as %, 3 = BOTH
 #define _BMU_THRES 0
 #define _BMU_CAP 0
@@ -50,6 +50,7 @@ typedef struct MPPT_STRUCT
   uint32_t i_in;        // Input Current
   uint32_t tmp;         // Temperature in degrees
   uint8_t flags;
+  uint32_t avg_power;	// Average Power
 
 #if _MPPT_POWER
   uint32_t watts;       // Watts into MPPT
@@ -89,6 +90,7 @@ typedef struct MOTORCONTROLLER_STRUCT
   /// From CAN Bus
   float bus_i;          // Bus Current
   float bus_v;          // Bus Voltage
+  float avg_power;		// Average Power
 #if _MC_ERR
   uint16_t error;       // Error Flags
 #endif // _MC_ERR
@@ -249,6 +251,7 @@ struct STATS_STRUCT
   uint8_t buz_tim;          // 10mS ticks to sound buzzer
   uint8_t strobe_tim;
   uint8_t paddle_mode;
+  uint32_t avg_power_counter;
   volatile uint8_t flags;
   volatile uint8_t errors;
 }stats;
@@ -295,30 +298,30 @@ struct STATS_STRUCT
 #define STATS_HWOC_ACK       ((stats.errors & 0x02) >> 1)
 #define STATS_COMMS          ((stats.errors & 0x04) >> 2)
 #define STATS_FAULT          ((stats.errors & 0x18) >> 3)
-#define STATS_EUNUSED_1      ((stats.errors & 0x20) >> 5)
-#define STATS_EUNUSED_2      ((stats.errors & 0x40) >> 6)
+#define STATS_NO_ARR_HV      ((stats.errors & 0x20) >> 5)
+#define STATS_BMU_ACK        ((stats.errors & 0x40) >> 6)
 #define STATS_EUNUSED_3      ((stats.errors & 0x80) >> 7)
 
 #define SET_STATS_SWOC_ACK   stats.errors |= 0x01;
 #define SET_STATS_HWOC_ACK   stats.errors |= 0x02;
 #define SET_STATS_COMMS      stats.errors |= 0x04;
-#define SET_STATS_EUNUSED_1  stats.errors |= 0x20;
-#define SET_STATS_EUNUSED_2  stats.errors |= 0x40;
+#define SET_STATS_NO_ARR_HV  stats.errors |= 0x20;
+#define SET_STATS_BMU_ACK    stats.errors |= 0x40;
 #define SET_STATS_EUNUSED_3  stats.errors |= 0x80;
 
 #define CLR_STATS_SWOC_ACK   stats.errors &= 0xFE;
 #define CLR_STATS_HWOC_ACK   stats.errors &= 0xFD;
 #define CLR_STATS_COMMS      stats.errors &= 0xFB;
-#define CLR_STATS_EUNUSED_1  stats.errors &= 0xDF;
-#define CLR_STATS_EUNUSED_2  stats.errors &= 0xBF;
+#define CLR_STATS_NO_ARR_HV  stats.errors &= 0xDF;
+#define CLR_STATS_BMU_ACK    stats.errors &= 0xBF;
 #define CLR_STATS_EUNUSED_3  stats.errors &= 0x7F;
 
-#define TOG_STATS_SWOC_ACK   stats.errors ^= 0xFE;
-#define TOG_STATS_HWOC_ACK   stats.errors ^= 0xFD;
-#define TOG_STATS_COMMS      stats.errors ^= 0xFB;
-#define TOG_STATS_EUNUSED_1  stats.errors ^= 0xDF;
-#define TOG_STATS_EUNUSED_2  stats.errors ^= 0xBF;
-#define TOG_STATS_EUNUSED_3  stats.errors ^= 0x7F;
+#define TOG_STATS_SWOC_ACK   stats.errors ^= 0x01;
+#define TOG_STATS_HWOC_ACK   stats.errors ^= 0x02;
+#define TOG_STATS_COMMS      stats.errors ^= 0x04;
+#define TOG_STATS_NO_ARR_HV  stats.errors ^= 0x20;
+#define TOG_STATS_BMU_ACK    stats.errors ^= 0x40;
+#define TOG_STATS_EUNUSED_3  stats.errors ^= 0x80;
 
 
 struct DRIVE_STRUCT

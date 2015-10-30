@@ -54,10 +54,6 @@ uint16_t rgn_pos = 0;
 MPPT mppt1;
 MPPT mppt2;
 
-/// Relayed MPPTs
-MPPT_RELAY mppt_relay1;
-MPPT_RELAY mppt_relay2;
-
 /// Motor Controller
 MOTORCONTROLLER esc;
 
@@ -101,10 +97,31 @@ void SysTick_Handler (void)
     can_tx1_buf.DataA = 0x0;
     can_tx1_buf.DataB = conv_float_uint(1);
     CAN1_SendMessage( &can_tx1_buf );
+
+    esc.avg_power += esc.watts;
+    mppt1.avg_power += mppt1.watts;
+    mppt2.avg_power += mppt2.watts;
+    stats.avg_power_counter++;
   }
 
-  if(clock.T_mS / 50){clock.blink = 1;}
-  else{clock.blink = 0;}
+  if(clock.T_mS / 50)
+  {
+	  if(!clock.blink)
+	  {
+		  can_tx2_buf.MsgID = MPPT1_BASE;
+		  CAN2_SendMessage( &can_tx2_buf );
+	  }
+	  clock.blink = 1;
+  }
+  else
+  {
+	  if(clock.blink)
+	  {
+		  can_tx2_buf.MsgID = MPPT2_BASE;
+		  CAN2_SendMessage( &can_tx2_buf );
+	  }
+	  clock.blink = 0;
+  }
 
   if(stats.buz_tim)
   {
@@ -132,11 +149,25 @@ void SysTick_Handler (void)
     if((mppt1.flags & 0x03)>0){mppt1.flags = (mppt1.flags & 0xFC) | ((mppt1.flags & 0x03) - 1);} // if disconnected for 3 seconds. Then FLAG disconnect.
     if((mppt2.flags & 0x03)>0){mppt2.flags = (mppt2.flags & 0xFC) | ((mppt2.flags & 0x03) - 1);} // if disconnected for 3 seconds. Then FLAG disconnect.
     if(shunt.con_tim>0){shunt.con_tim--;}
-    if(MECH_BRAKE)
+    if(MECH_BRAKE || rgn_pos)
     {
       if(stats.strobe_tim>0){stats.strobe_tim--;}
     }
-    else{stats.strobe_tim = 60;}
+    else{stats.strobe_tim = 30;}
+
+    can_tx1_buf.Frame = 0x00080000;
+    can_tx1_buf.MsgID = DASH_RPLY + 3;
+    if(stats.avg_power_counter){can_tx1_buf.DataA = conv_float_uint(esc.avg_power/stats.avg_power_counter);}
+    else{can_tx1_buf.DataA = 0;}
+    can_tx1_buf.DataB = conv_float_uint((mppt1.watt_hrs + mppt2.watt_hrs));
+    CAN1_SendMessage( &can_tx1_buf );
+
+    if(stats.avg_power_counter){
+    can_tx1_buf.Frame = 0x00080000;
+    can_tx1_buf.MsgID = DASH_RPLY + 4;
+    can_tx1_buf.DataA = conv_float_uint(mppt1.avg_power/stats.avg_power_counter);
+    can_tx1_buf.DataB = conv_float_uint(mppt2.avg_power/stats.avg_power_counter);
+    CAN1_SendMessage( &can_tx1_buf );}
 
     persistent_store(); // Store data in eeprom every second
 
@@ -147,11 +178,36 @@ void SysTick_Handler (void)
 }
 
 /******************************************************************************
+ ** Function name:  main_driver_check
+ **
+ ** Description:    Checks for input sequence to active test mode
+ **
+ ** Parameters:     None
+ ** Returned value: None
+ **
+ ******************************************************************************/
+void main_driver_check (void)
+{
+  volatile static uint8_t _seq = 0;
+  if(LEFT && _seq == 0){_seq++;}
+  else if(LEFT && _seq == 1){;}
+  else if(DECREMENT && _seq == 1){_seq++;}
+  else if(DECREMENT && _seq == 2){;}
+  else if(RIGHT && _seq == 2){_seq++;}
+  else if(RIGHT && _seq == 3){;}
+  else if(INCREMENT && _seq == 3){_seq++;}
+  else if(INCREMENT && _seq == 4){;}
+  else if(RIGHT && _seq == 4){_seq++;}
+  else if(RIGHT && _seq == 5){;}
+  else if(_seq == 5){menu.driver = 9;menu_init();_seq=0;}
+  else if(!RIGHT && !INCREMENT && !LEFT && !DECREMENT & !SELECT){;}
+  else{_seq = 0;}
+}
+
+/******************************************************************************
  ** Function name:  main_mppt_poll
  **
  ** Description:    1. Sends request packet to MPPT (125K CAN Bus)
- **                 2. Sends previous MPPT packet to car (500K CAN Bus)
- **                 3. Receives new packet and extracts data (125K CAN Bus)
  **
  ** Parameters:     None
  ** Returned value: None
@@ -159,68 +215,68 @@ void SysTick_Handler (void)
  ******************************************************************************/
 void main_mppt_poll (void)
 {
-  TOG_STATS_MPPT_POLL; // Toggle bit. Selects which MPPT to poll this round
-
-  // 1. Sends request packet to MPPT (125K CAN Bus)
-  if((LPC_CAN2->GSR & (1 << 3)) && STATS_MPPT_POLL) // Check Global Status Reg
-  {
-    can_tx2_buf.MsgID = MPPT2_BASE;
-    CAN2_SendMessage( &can_tx2_buf );
-  }
-
-  else if(LPC_CAN2->GSR & (1 << 3)) // Check Global Status Reg
-  {
-    can_tx2_buf.MsgID = MPPT1_BASE;
-    CAN2_SendMessage( &can_tx2_buf );
-  }
-
-  // 2. Sends previous MPPT packet to car (500K CAN Bus)
-  if((LPC_CAN1->GSR & (1 << 3)) && STATS_MPPT_POLL) // Check Global Status Reg
-  {
-    can_tx1_buf.Frame = 0x00070000;  // 11-bit, no RTR, DLC is 7 bytes
-    can_tx1_buf.MsgID = MPPT2_RPLY;
-    if(mppt2.flags & 0x03)
-    {
-      can_tx1_buf.DataA = mppt_relay2.data_a;
-      can_tx1_buf.DataB = mppt_relay2.data_b;
-    }
-    else
-    {
-      can_tx1_buf.DataA = 0x0;
-      can_tx1_buf.DataB = 0x0;
-    }
-    CAN1_SendMessage( &can_tx1_buf );
-  }
-  else if(LPC_CAN1->GSR & (1 << 3)) // Check Global Status Reg
-  {
-    can_tx1_buf.Frame = 0x00070000;  // 11-bit, no RTR, DLC is 7 bytes
-    can_tx1_buf.MsgID = MPPT1_RPLY;
-    if(mppt1.flags & 0x03)
-    {
-      can_tx1_buf.DataA = mppt_relay1.data_a;
-      can_tx1_buf.DataB = mppt_relay1.data_b;
-    }
-    else
-    {
-      can_tx1_buf.DataA = 0x0;
-      can_tx1_buf.DataB = 0x0;
-    }
-    CAN1_SendMessage( &can_tx1_buf );
-  }
-
-  // 3. Receives new packet and extracts data (125K CAN Bus)
-  if ( can_rx2_done == TRUE )
-  {
-    can_rx2_done = FALSE;
-    if      (can_rx2_buf.MsgID == MPPT1_RPLY){mppt_data_extract(&mppt1, &mppt_relay1);}
-    else if (can_rx2_buf.MsgID == MPPT2_RPLY){mppt_data_extract(&mppt2, &mppt_relay2);}
-
-    // Reset buffer to prevent packets being received multiple times
-    can_rx2_buf.Frame = 0x0;
-    can_rx2_buf.MsgID = 0x0;
-    can_rx2_buf.DataA = 0x0;
-    can_rx2_buf.DataB = 0x0;
-  }
+//  TOG_STATS_MPPT_POLL; // Toggle bit. Selects which MPPT to poll this round
+//
+//  // 1. Sends request packet to MPPT (125K CAN Bus)
+//  if((LPC_CAN2->GSR & (1 << 3)) && STATS_MPPT_POLL) // Check Global Status Reg
+//  {
+//    can_tx2_buf.MsgID = MPPT2_BASE;
+//    CAN2_SendMessage( &can_tx2_buf );
+//  }
+//
+//  else if(LPC_CAN2->GSR & (1 << 3)) // Check Global Status Reg
+//  {
+//    can_tx2_buf.MsgID = MPPT1_BASE;
+//    CAN2_SendMessage( &can_tx2_buf );
+//  }
+//
+//  // 2. Sends previous MPPT packet to car (500K CAN Bus)
+//  if((LPC_CAN1->GSR & (1 << 3)) && STATS_MPPT_POLL) // Check Global Status Reg
+//  {
+//    can_tx1_buf.Frame = 0x00070000;  // 11-bit, no RTR, DLC is 7 bytes
+//    can_tx1_buf.MsgID = MPPT2_RPLY;
+//    if(mppt2.flags & 0x03)
+//    {
+//      can_tx1_buf.DataA = mppt_relay2.data_a;
+//      can_tx1_buf.DataB = mppt_relay2.data_b;
+//    }
+//    else
+//    {
+//      can_tx1_buf.DataA = 0x0;
+//      can_tx1_buf.DataB = 0x0;
+//    }
+//    CAN1_SendMessage( &can_tx1_buf );
+//  }
+//  else if(LPC_CAN1->GSR & (1 << 3)) // Check Global Status Reg
+//  {
+//    can_tx1_buf.Frame = 0x00070000;  // 11-bit, no RTR, DLC is 7 bytes
+//    can_tx1_buf.MsgID = MPPT1_RPLY;
+//    if(mppt1.flags & 0x03)
+//    {
+//      can_tx1_buf.DataA = mppt_relay1.data_a;
+//      can_tx1_buf.DataB = mppt_relay1.data_b;
+//    }
+//    else
+//    {
+//      can_tx1_buf.DataA = 0x0;
+//      can_tx1_buf.DataB = 0x0;
+//    }
+//    CAN1_SendMessage( &can_tx1_buf );
+//  }
+//
+//  // 3. Receives new packet and extracts data (125K CAN Bus)
+//  if ( can_rx2_done == TRUE )
+//  {
+//    can_rx2_done = FALSE;
+//    if      (can_rx2_buf.MsgID == MPPT1_RPLY){mppt_data_extract(&mppt1, &mppt_relay1);}
+//    else if (can_rx2_buf.MsgID == MPPT2_RPLY){mppt_data_extract(&mppt2, &mppt_relay2);}
+//
+//    // Reset buffer to prevent packets being received multiple times
+//    can_rx2_buf.Frame = 0x0;
+//    can_rx2_buf.MsgID = 0x0;
+//    can_rx2_buf.DataA = 0x0;
+//    can_rx2_buf.DataB = 0x0;
+//  }
 
   // Check mppt connection timeouts - clear instantaneous data
   if(!(mppt1.flags & 0x03))
@@ -229,9 +285,7 @@ void main_mppt_poll (void)
     mppt1.i_in = 0;
     mppt1.v_out = 0;
     mppt1.watts = 0;
-
-    mppt_relay1.data_a = 0;
-    mppt_relay1.data_b = 0;
+    mppt1.flags = 0;
   }
 
   if(!(mppt2.flags & 0x03))
@@ -240,10 +294,93 @@ void main_mppt_poll (void)
     mppt2.i_in = 0;
     mppt2.v_out = 0;
     mppt2.watts = 0;
-
-    mppt_relay2.data_a = 0;
-    mppt_relay2.data_b = 0;
+    mppt2.flags = 0;
   }
+}
+
+void extractMPPT1DATA(void)
+{
+	uint32_t RawDATA_A = can_rx2_buf.DataA;
+	uint32_t RawDATA_B = can_rx2_buf.DataB;
+
+	can_tx1_buf.MsgID = MPPT1_RPLY;
+	can_tx1_buf.Frame = 0x00070000;
+	can_tx1_buf.DataA = RawDATA_A;
+	can_tx1_buf.DataB = RawDATA_B;
+	CAN1_SendMessage( &can_tx1_buf );
+
+	uint32_t tempVOLT_IN = 0;
+	uint32_t tempCURR_IN = 0;
+	uint32_t tempVOLT_OUT = 0;
+
+	// Status Flags
+	mppt1.flags &= 0xC3;
+	mppt1.flags |= ((RawDATA_A & 0xF0) >> 2);
+
+	// Power Variables
+	tempVOLT_IN = ((RawDATA_A & 0b11) << 8);  								// Masking and shifting the upper 2 MSB
+	tempVOLT_IN = tempVOLT_IN + ((RawDATA_A & 0b1111111100000000) >> 8); 	// Masking and shifting the lower 8 LSB
+	tempVOLT_IN = tempVOLT_IN * 1.50;										// SCALING
+
+
+	RawDATA_A = (RawDATA_A >> 16);
+	tempCURR_IN = ((RawDATA_A & 0b11) << 8); 		// Masking and shifting the lower 8 LSB
+	tempCURR_IN = tempCURR_IN + ((RawDATA_A & 0b1111111100000000) >> 8);  // Masking and shifting the upper 2 MSB
+	tempCURR_IN = tempCURR_IN * 0.87;  										// SCALING
+
+	tempVOLT_OUT = ((RawDATA_B & 0b11) << 8);  									// Masking and shifting the upper 2 MSB
+	tempVOLT_OUT = tempVOLT_OUT + ((RawDATA_B & 0b1111111100000000) >> 8); 		// Masking and shifting the lower 8 LSB
+	tempVOLT_OUT = tempVOLT_OUT * 2.10;
+
+	mppt1.tmp = (((RawDATA_B & 0b111111110000000000000000) >> 16) + 7 * mppt1.tmp)/8;
+
+	// Update the global variables after IIR filtering
+	mppt1.v_in = tempVOLT_IN;	//infinite impulse response filtering
+	mppt1.i_in = tempCURR_IN;
+	mppt1.v_out = tempVOLT_OUT;
+	mppt1.flags |= 0x3;
+}
+
+void extractMPPT2DATA(void)
+{
+	uint32_t RawDATA_A = can_rx2_buf.DataA;
+	uint32_t RawDATA_B = can_rx2_buf.DataB;
+
+	can_tx1_buf.MsgID = MPPT2_RPLY;
+	can_tx1_buf.Frame = 0x00070000;
+	can_tx1_buf.DataA = RawDATA_A;
+	can_tx1_buf.DataB = RawDATA_B;
+	CAN1_SendMessage( &can_tx1_buf );
+
+	uint32_t tempVOLT_IN = 0;
+	uint32_t tempCURR_IN = 0;
+	uint32_t tempVOLT_OUT = 0;
+
+	// Status Flags
+	mppt2.flags &= 0xC3;
+	mppt2.flags |= ((RawDATA_A & 0xF0) >> 2);
+
+	// Power Variables
+	tempVOLT_IN = ((RawDATA_A & 0b11) << 8);  								// Masking and shifting the upper 2 MSB
+	tempVOLT_IN = tempVOLT_IN + ((RawDATA_A & 0b1111111100000000) >> 8); 	// Masking and shifting the lower 8 LSB
+	tempVOLT_IN = tempVOLT_IN * 1.50;										// SCALING
+
+	RawDATA_A = (RawDATA_A >> 16);
+	tempCURR_IN = ((RawDATA_A & 0b11) << 8); 								// Masking and shifting the lower 8 LSB
+	tempCURR_IN = tempCURR_IN + ((RawDATA_A & 0b1111111100000000) >> 8);  	// Masking and shifting the upper 2 MSB
+	tempCURR_IN = tempCURR_IN * 0.87;  										// SCALING
+
+	tempVOLT_OUT = ((RawDATA_B & 0b11) << 8);  									// Masking and shifting the upper 2 MSB
+	tempVOLT_OUT = tempVOLT_OUT + ((RawDATA_B & 0b1111111100000000) >> 8); 		// Masking and shifting the lower 8 LSB
+	tempVOLT_OUT = tempVOLT_OUT * 2.10;
+
+	mppt2.tmp = (((RawDATA_B & 0b111111110000000000000000) >> 16) + 7 * mppt2.tmp)/8;
+
+	// Update the global variables after IIR filtering
+	mppt2.v_in = tempVOLT_IN;	//infinite impulse response filtering
+	mppt2.i_in = tempCURR_IN;
+	mppt2.v_out = tempVOLT_OUT;
+	mppt2.flags |= 0x3;
 }
 
 /******************************************************************************
@@ -252,11 +389,10 @@ void main_mppt_poll (void)
  ** Description:    Extracts data from CAN 2 Rx buffer into MPPT structure.
  **
  ** Parameters:     1. Address of MPPT to extract to
- **                 2. Address of MPPT_RELAY to use for retransmit
  ** Returned value: None
  **
  ******************************************************************************/
-void mppt_data_extract (MPPT *_MPPT, MPPT_RELAY *_fkMPPT)
+void mppt_data_extract (MPPT *_MPPT)
 {
   uint32_t _VIn = 0;
   uint32_t _IIn = 0;
@@ -265,25 +401,29 @@ void mppt_data_extract (MPPT *_MPPT, MPPT_RELAY *_fkMPPT)
   uint32_t _Data_A = can_rx2_buf.DataA;
   uint32_t _Data_B = can_rx2_buf.DataB;
 
-  _fkMPPT->data_a = _Data_A;
-  _fkMPPT->data_b = _Data_B;
+  can_tx1_buf.Frame = 0x00070000;
+  can_tx1_buf.MsgID = can_rx2_buf.MsgID;
+  can_tx1_buf.DataA = _Data_A;
+  can_tx1_buf.DataB = _Data_B;
+  CAN1_SendMessage( &can_tx1_buf );
 
   // Status Flags
+  _MPPT->flags &= 0xC3;
   _MPPT->flags |= ((_Data_A & 0xF0) >> 2);
 
   // Power Variables
-  _VIn = ((_Data_A & 0b11) << 8);             // Masking and shifting the upper 2 MSB
-  _VIn = _VIn + ((_Data_A & 0xFF00) >> 8);    // Masking and shifting the lower 8 LSB
-  _VIn = _VIn * 1.50;                         // Scaling
+  _VIn |= ((_Data_A & 0b11) << 8);             // Masking and shifting the upper 2 MSB
+  _VIn |= ((_Data_A & 0xFF00) >> 8);    // Masking and shifting the lower 8 LSB
+  _VIn *= 1.50;                         // Scaling
 
   _Data_A = (_Data_A >> 16);
-  _IIn = ((_Data_A & 0b11) << 8);             // Masking and shifting the lower 8 LSB
-  _IIn = _IIn + ((_Data_A & 0xFF00) >> 8);    // Masking and shifting the upper 2 MSB
-  _IIn = _IIn * 0.87;                         // Scaling
+  _IIn |= ((_Data_A & 0b11) << 8);             // Masking and shifting the lower 8 LSB
+  _IIn |= ((_Data_A & 0xFF00) >> 8);    // Masking and shifting the upper 2 MSB
+  _IIn *= 0.87;                         // Scaling
 
-  _VOut = ((_Data_B & 0b11) << 8);            // Masking and shifting the upper 2 MSB
-  _VOut = _VOut + ((_Data_B & 0xFF00) >> 8);  // Masking and shifting the lower 8 LSB
-  _VOut = _VOut * 2.10;                       // Scaling
+  _VOut |= ((_Data_B & 0b11) << 8);            // Masking and shifting the upper 2 MSB
+  _VOut |= ((_Data_B & 0xFF00) >> 8);  // Masking and shifting the lower 8 LSB
+  _VOut *= 2.10;                       // Scaling
 
   // Update the structure after IIR filtering
   _MPPT->tmp = iir_filter_uint(((_Data_B & 0xFF0000) >> 16), _MPPT->tmp, IIR_GAIN_THERMAL);
@@ -366,6 +506,8 @@ void main_input_check (void)
  ******************************************************************************/
 int main_fault_check (void)
 {
+  if(mppt1.i_in == 0 || mppt2.i_in == 0){SET_STATS_NO_ARR_HV;}
+  else{CLR_STATS_NO_ARR_HV;}
   if(esc.error){drive.current = 0;drive.speed_rpm = 0;return 2;}
   if(mppt1.flags & 0x28 || mppt2.flags & 0x28 || (bmu.status & 0x7) || (!shunt.con_tim)){return 1;}
   return 0;
@@ -393,21 +535,22 @@ void main_drive (void)
 
   main_paddles(ADC_A, ADC_B, &thr_pos, &rgn_pos);
 
-  if(!FORWARD || !menu.driver){buzzer(10);CLR_STATS_CR_ACT;CLR_STATS_CR_STS;stats.cruise_speed = 0;} // Must be in forward or not in display mode to use cruise
+  if((!FORWARD || !menu.driver || STATS_DRV_MODE) && STATS_CR_STS){buzzer(10);CLR_STATS_CR_ACT;CLR_STATS_CR_STS;stats.cruise_speed = 0;} // Must be in forward or not in display mode to use cruise
   if(rgn_pos || thr_pos){CLR_STATS_CR_ACT;}
 
 
   // MinorSec: DRIVE LOGIC
-  if(!MECH_BRAKE && (FORWARD || REVERSE)){
-    if(STATS_CR_ACT)                                                                                                    {drive.current = 1.0;    drive.speed_rpm = stats.cruise_speed / ((60 * 3.14 * WHEEL_D_M) / 1000.0);}
-    else if(!thr_pos && !rgn_pos)                                                                                       {drive.speed_rpm = 0;    drive.current = 0;}
-    else if(rgn_pos)                                                                                                    {drive.speed_rpm = 0;    drive.current = -((float)rgn_pos / 1000.0);}
-    else if(thr_pos && drive.current < 0)                                                                               {                        drive.current = 0;}
+  if((!MECH_BRAKE || STATS_DRV_MODE) && (FORWARD || REVERSE)){
+    if(STATS_CR_ACT)                                                                                        {drive.current = 1.0;    drive.speed_rpm = stats.cruise_speed / ((60 * 3.14 * WHEEL_D_M) / 1000.0);}
+    else if(!thr_pos && !rgn_pos)                                                                           {drive.speed_rpm = 0;    drive.current = 0;}
+    else if(rgn_pos)                                                                                        {drive.speed_rpm = 0;    drive.current = -((float)rgn_pos / 1000.0);}
+    else if(thr_pos && drive.current < 0)                                                                   {                        drive.current = 0;}
     else if(FORWARD && esc.velocity_kmh > -5.0 && (((drive.current * 1000) + stats.ramp_speed) < thr_pos))  {drive.speed_rpm = 1500; drive.current += (stats.ramp_speed / 1000.0);}
     else if(FORWARD && esc.velocity_kmh > -5.0)                                                             {drive.speed_rpm = 1500; drive.current = (thr_pos / 1000.0);}
     else if(REVERSE && esc.velocity_kmh <  1.0 && (((drive.current * 1000) + stats.ramp_speed) < thr_pos))  {drive.speed_rpm = -200; drive.current += (stats.ramp_speed / 1000.0);}
     else if(REVERSE && esc.velocity_kmh <  1.0)                                                             {drive.speed_rpm = -200; drive.current = (thr_pos / 1000.0);}
     else{drive.speed_rpm = 0; drive.current = 0;}}
+  else if(rgn_pos)                                                                                        {drive.speed_rpm = 0;    drive.current = -((float)rgn_pos / 1000.0);}
   else{drive.speed_rpm = 0; drive.current = 0;CLR_STATS_CR_ACT;}
 }
 
@@ -533,7 +676,7 @@ void main_paddles (uint32_t _pad1, uint32_t _pad2, uint16_t *_thr, uint16_t *_rg
  ******************************************************************************/
 void main_lights (void)
 {
-  if((MECH_BRAKE || rgn_pos) && !STATS_STROBE){BRAKELIGHT_ON;}
+  if((MECH_BRAKE || rgn_pos || esc.bus_i < 0) && !STATS_STROBE){BRAKELIGHT_ON;}
   else                                        {BRAKELIGHT_OFF;}
 
   if(!rgn_pos)
@@ -554,7 +697,7 @@ void main_lights (void)
   if(((SWITCH_IO & 0x10) || STATS_HAZARDS) && (clock.blink)){BLINKER_R_ON}
   else{BLINKER_R_OFF}
 
-  if(SWITCH_IO & 0x4) {SPORTS_ON;ECO_OFF;}
+  if(STATS_DRV_MODE) {SPORTS_ON;ECO_OFF;}
   else                {SPORTS_OFF;ECO_ON;}
 
   if(STATS_FAULT == 1){FAULT_ON}
@@ -818,7 +961,7 @@ uint32_t I2C_read (uint16_t _EEadd)
   I2CStop(PORT_USED);
 
   // TODO: Test I2C timeouts
-  if(I2CMasterState[PORT_USED] == I2C_TIME_OUT){SET_STATS_SWOC_ACK;}
+  // if(I2CMasterState[PORT_USED] == I2C_TIME_OUT){SET_STATS_SWOC_ACK;}
 
   return (uint32_t)I2CSlaveBuffer[PORT_USED][0];
 }
@@ -875,7 +1018,7 @@ void I2C_write (uint16_t _EEadd, uint8_t data0, uint8_t data1, uint8_t data2, ui
   I2CEngine( PORT_USED );
 
   // TODO: Test I2C timeouts
-  if(I2CMasterState[PORT_USED] == I2C_TIME_OUT){SET_STATS_HWOC_ACK;}
+  // if(I2CMasterState[PORT_USED] == I2C_TIME_OUT){SET_STATS_HWOC_ACK;}
 
   delayMs(1,2);
 }
@@ -999,7 +1142,7 @@ void nonpersistent_load(void)
   stats.max_speed = 0;
   stats.cruise_speed = 0;
   stats.ramp_speed = 5;
-  stats.strobe_tim = 60;
+  stats.strobe_tim = 30;
   stats.paddle_mode = 1;
 
   bmu.bus_i = 0;
@@ -1023,6 +1166,9 @@ void nonpersistent_load(void)
   esc.max_bus_v = 0;
   esc.max_watts = 0;
   esc.velocity_kmh = 0;
+  esc.motor_tmp = 0;
+  esc.board_tmp = 0;
+  esc.avg_power = 0;
 
   mppt1.tmp = 0;
   mppt1.v_in = 0;
@@ -1035,6 +1181,7 @@ void nonpersistent_load(void)
   mppt1.max_v_in = 0;
   mppt1.max_v_out = 0;
   mppt1.max_watts = 0;
+  mppt1.avg_power = 0;
 
   mppt2.tmp = 0;
   mppt2.v_in = 0;
@@ -1047,6 +1194,7 @@ void nonpersistent_load(void)
   mppt2.max_v_in = 0;
   mppt2.max_v_out = 0;
   mppt2.max_watts = 0;
+  mppt2.avg_power = 0;
 
   shunt.bus_i = 0;
   shunt.bus_v = 0;
@@ -1229,7 +1377,7 @@ int main (void)
   menu_init();
 
   if(FORWARD || REVERSE){menu_errOnStart();}
-  while(FORWARD || REVERSE){buzzer(60);delayMs(1, 1000);}
+  while(FORWARD || REVERSE){buzzer(6);delayMs(1, 1000);}
 
   while(1){ // Exiting this loop ends the program
     if((esc.error & 0x1) && !STATS_HWOC_ACK) // on unacknowledged HWOC error, show error screen
@@ -1238,12 +1386,16 @@ int main (void)
     {menu.errors[0]();}
     else if(STATS_COMMS)
     {menu.errors[2]();}
+    else if(bmu.status && !(STATS_BMU_ACK))
+    {menu.errors[3]();}
     else
     {
       if(STATS_SWOC_ACK && !(esc.error & 0x2)) // if acknowledged previous error is reset
       {CLR_STATS_SWOC_ACK;}
       if(STATS_HWOC_ACK && !(esc.error & 0x1)) // if acknowledged previous error is reset
       {CLR_STATS_HWOC_ACK;}
+      if(STATS_BMU_ACK && !(bmu.status))
+      {CLR_STATS_BMU_ACK;}
 
       menu.counter++;
 
@@ -1258,6 +1410,7 @@ int main (void)
     main_can_handler();
     main_calc();
     main_HV();
+    main_driver_check();
   }
 
   return 0; // For compilers sanity
